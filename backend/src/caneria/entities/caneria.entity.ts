@@ -4,10 +4,12 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  ManyToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { LineString } from 'geojson';
+import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
 import { v4 } from 'uuid';
 
 @Entity('canerias')
@@ -25,6 +27,12 @@ export class CaneriaEntity {
 
   @Column()
   estado?: string;
+
+  @ManyToOne(() => TanqueEntity, (tanque) => tanque.canerias, { nullable: true })
+  tanqueOrigen?: TanqueEntity;
+
+  @ManyToOne(() => TanqueEntity, (tanque) => tanque.canerias, { nullable: true })
+  tanqueDestino?: TanqueEntity;
 
   @CreateDateColumn()
   createdAt?: Date;

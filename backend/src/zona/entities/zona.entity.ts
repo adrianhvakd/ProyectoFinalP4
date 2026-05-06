@@ -4,10 +4,14 @@ import {
   DeleteDateColumn,
   Entity,
   Index,
+  ManyToOne,
+  OneToOne,
   PrimaryGeneratedColumn,
+  JoinColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Polygon } from 'geojson';
+import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
 import { v4 } from 'uuid';
 
 @Entity('zonas')
@@ -18,6 +22,9 @@ export class ZonaEntity {
   @Column()
   nombre?: string;
 
+  @Column({ default: 0 })
+  cantidad_usuarios?: number;
+
   @Index({ spatial: true })
   @Column({
     type: 'geometry',
@@ -25,6 +32,10 @@ export class ZonaEntity {
     srid: 4326,
   })
   perimetro: Polygon;
+
+  @OneToOne(() => TanqueEntity, (tanque) => tanque.zona, { nullable: true })
+  @JoinColumn()
+  tanque?: TanqueEntity;
 
   @CreateDateColumn()
   createdAt?: Date;

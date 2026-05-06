@@ -1,5 +1,6 @@
 import { MedicionEntity } from 'src/medicion/entities/medicion.entity';
 import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { DispositivoESP32Entity } from 'src/dispositivo-esp32/entities/dispositivo-esp32.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -28,6 +29,9 @@ export class SensorEntity {
 
   @ManyToOne(() => TanqueEntity, (tanque) => tanque.sensores)
   tanque?: TanqueEntity;
+
+  @ManyToOne(() => DispositivoESP32Entity, (dispositivo) => dispositivo.sensores, { nullable: true })
+  dispositivo?: DispositivoESP32Entity;
 
   @OneToMany(() => MedicionEntity, (medicion) => medicion.sensor)
   mediciones?: MedicionEntity[];

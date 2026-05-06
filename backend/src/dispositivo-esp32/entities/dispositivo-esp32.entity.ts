@@ -1,9 +1,11 @@
 import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { SensorEntity } from 'src/sensor/entities/sensor.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   CreateDateColumn,
   UpdateDateColumn,
   DeleteDateColumn,
@@ -15,17 +17,27 @@ export class DispositivoESP32Entity {
   @PrimaryGeneratedColumn('uuid')
   id: string = v4();
 
-  @Column({ unique: true })
-  chip_id?: string;
+  @Column()
+  nombre?: string;
 
   @Column()
-  api_key?: string;
+  ip_address?: string;
 
-  @Column({ default: true })
-  is_active?: boolean;
+  @Column({ default: 80 })
+  puerto?: number;
+
+  @Column({
+    type: 'enum',
+    enum: ['ACTIVO', 'INACTIVO'],
+    default: 'ACTIVO',
+  })
+  estado?: string;
 
   @ManyToOne(() => TanqueEntity, (tanque) => tanque.dispositivos)
   tanque?: TanqueEntity;
+
+  @OneToMany(() => SensorEntity, (sensor) => sensor.dispositivo)
+  sensores?: SensorEntity[];
 
   @CreateDateColumn()
   createdAt?: Date;

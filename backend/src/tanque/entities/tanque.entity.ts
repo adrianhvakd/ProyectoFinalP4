@@ -4,6 +4,7 @@ import {
   Column,
   ManyToOne,
   OneToMany,
+  OneToOne,
   Index,
   CreateDateColumn,
   UpdateDateColumn,
@@ -13,6 +14,8 @@ import { Point } from 'geojson';
 import { UserEntity } from 'src/user/entities/user.entity';
 import { SensorEntity } from 'src/sensor/entities/sensor.entity';
 import { DispositivoESP32Entity } from 'src/dispositivo-esp32/entities/dispositivo-esp32.entity';
+import { CaneriaEntity } from 'src/caneria/entities/caneria.entity';
+import { ZonaEntity } from 'src/zona/entities/zona.entity';
 import { v4 } from 'uuid';
 
 @Entity('tanques')
@@ -48,6 +51,12 @@ export class TanqueEntity {
 
   @OneToMany(() => DispositivoESP32Entity, (esp) => esp.tanque)
   dispositivos?: DispositivoESP32Entity[];
+
+  @OneToMany(() => CaneriaEntity, (caneria) => caneria.tanqueOrigen)
+  canerias?: CaneriaEntity[];
+
+  @OneToOne(() => ZonaEntity, (zona) => zona.tanque)
+  zona?: ZonaEntity;
 
   @CreateDateColumn()
   createdAt?: Date;

@@ -11,6 +11,8 @@ import { CaneriaModule } from './caneria/caneria.module';
 import { MedicionModule } from './medicion/medicion.module';
 import { SensorModule } from './sensor/sensor.module';
 import { DispositivoEsp32Module } from './dispositivo-esp32/dispositivo-esp32.module';
+import { AuthModule } from './auth/auth.module';
+import { SeedModule } from './seed/seed.module';
 
 @Module({
   imports: [
@@ -25,6 +27,8 @@ import { DispositivoEsp32Module } from './dispositivo-esp32/dispositivo-esp32.mo
     MedicionModule,
     CaneriaModule,
     ZonaModule,
+    AuthModule,
+    SeedModule,
   ],
   controllers: [AppController],
   providers: [AppService],
