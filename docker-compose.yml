@@ -1,0 +1,36 @@
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    container_name: ProyectoFinalP4_h2o_db
+    restart: always
+    environment:
+      POSTGRES_USER: adrianhvakd
+      POSTGRES_PASSWORD: 10554512aA.
+      POSTGRES_DB: ProyectoFinalP4
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - potosi_network
+
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: ProyectoFinalP4_pgadmin
+    restart: always
+    environment:
+      PGADMIN_DEFAULT_EMAIL: adrianhvakd@gmail.com
+      PGADMIN_DEFAULT_PASSWORD: 10554512aA.
+    ports:
+      - "5050:80"
+    networks:
+      - potosi_network
+    depends_on:
+      - db
+
+networks:
+  potosi_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
