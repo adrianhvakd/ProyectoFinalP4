@@ -9,7 +9,8 @@ import {
   UpdateDateColumn,
 } from 'typeorm';
 import { LineString } from 'geojson';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 import { v4 } from 'uuid';
 
 @Entity('canerias')
@@ -28,11 +29,14 @@ export class CaneriaEntity {
   @Column()
   estado?: string;
 
-  @ManyToOne(() => TanqueEntity, (tanque) => tanque.canerias, { nullable: true })
-  tanqueOrigen?: TanqueEntity;
+  @ManyToOne(() => ReservorioEntity, { nullable: true })
+  reservorioOrigen?: ReservorioEntity;
 
-  @ManyToOne(() => TanqueEntity, (tanque) => tanque.canerias, { nullable: true })
-  tanqueDestino?: TanqueEntity;
+  @ManyToOne(() => ReservorioEntity, { nullable: true })
+  reservorioDestino?: ReservorioEntity;
+
+  @ManyToOne(() => DomiciliarioEntity, { nullable: true })
+  domiciliarioDestino?: DomiciliarioEntity;
 
   @CreateDateColumn()
   createdAt?: Date;

@@ -1,0 +1,105 @@
+<div class="space-y-4">
+  <h1 class="text-2xl font-bold">
+    {{ isAdmin() ? 'Gestión de Tanques' : 'Monitoreo' }}
+  </h1>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+    <div class="lg:col-span-2">
+      <div class="bg-base-100 rounded-lg shadow p-4">
+        <app-mapa 
+          [tanques]="tanquesFiltrados()"
+          [mostrarCanerias]="mostrarCanerias()"
+          [mostrarZonas]="mostrarZonas()"
+          [modoAdmin]="isAdmin()"
+          [modoSoloLectura]="!isAdmin()"
+          [filtrarPorIds]="isAdmin() ? [] : idsTanquesFiltrados()"
+          (tanqueClickeado)="onTanqueSeleccionado($event)"
+        ></app-mapa>
+      </div>
+    </div>
+
+    <div class="bg-base-100 rounded-lg shadow p-4">
+      @if (tanqueSeleccionado()) {
+        <div class="space-y-4">
+          <div class="border-b border-base-300 pb-3">
+            <h2 class="font-bold text-lg">{{ tanqueSeleccionado()!.nombre }}</h2>
+            <span [class]="tanqueSeleccionado()!.tipo === 'RESERVORIO_PUBLICO' ? 'badge badge-primary' : 'badge badge-secondary'">
+              {{ tanqueSeleccionado()!.tipo === 'RESERVORIO_PUBLICO' ? 'Reservorio Público' : 'Domiciliario' }}
+            </span>
+          </div>
+
+          @if (sensoresDelTanque().length > 0) {
+            <div class="form-control">
+              <label class="label">
+                <span class="label-text font-medium">Sensor</span>
+              </label>
+              <select [(ngModel)]="sensorSeleccionado" (ngModelChange)="onSensorChange($event)" class="select select-bordered">
+                @for (sensor of sensoresDelTanque(); track sensor.id) {
+                  <option [value]="sensor.id">{{ getSensorLabel(sensor.tipo) }}</option>
+                }
+              </select>
+            </div>
+          } @else {
+            <div class="alert alert-warning">
+              <span>Este tanque no tiene sensores</span>
+            </div>
+          }
+
+          @if (sensorSeleccionado && chartData()) {
+            <div class="bg-base-200 p-3 rounded-lg">
+              <canvas
+                baseChart
+                [data]="chartData()!"
+                [options]="chartOptions"
+                type="line">
+              </canvas>
+            </div>
+          }
+
+          @if (ultimaMedicion()) {
+            <div class="stats bg-base-200">
+              <div class="stat">
+                <div class="stat-title">Última Lectura</div>
+                <div class="stat-value text-primary">{{ ultimaMedicion()!.valor }}{{ getUnidad(sensorSeleccionado) }}</div>
+                <div class="stat-desc">{{ ultimaMedicion()!.fecha_hora | date:'short' }}</div>
+              </div>
+            </div>
+          }
+
+          <div class="space-y-2">
+            <h3 class="font-medium text-sm">Resumen de Sensores</h3>
+            @for (sensor of sensoresDelTanque(); track sensor.id) {
+              <div class="flex justify-between items-center p-2 bg-base-200 rounded text-sm">
+                <span>{{ getSensorLabel(sensor.tipo) }}</span>
+                @if (getUltimaLectura(sensor.id); as lect) {
+                  <span [class]="getValorClass(sensor.tipo, lect.valor)">
+                    {{ lect.valor }}{{ sensor.unidad_medida }}
+                  </span>
+                } @else {
+                  <span class="text-base-content/50">-</span>
+                }
+              </div>
+            }
+          </div>
+
+          @if (sensorSeleccionado && isAdmin()) {
+            <a [routerLink]="['/mediciones', sensorSeleccionado]" class="btn btn-outline btn-block">
+              Ver Gráfico Completo
+            </a>
+          }
+        </div>
+      } @else {
+        <div class="text-center py-12 text-base-content/50">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentPath">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          @if (isAdmin()) {
+            <p>Selecciona un tanque en el mapa para ver sus métricas</p>
+          } @else {
+            <p>Selecciona tu tanque para ver sus métricas</p>
+          }
+        </div>
+      }
+    </div>
+  </div>
+</div>

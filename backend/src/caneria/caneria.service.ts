@@ -2,7 +2,8 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CaneriaEntity } from './entities/caneria.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 import type { GeoJSONFeature, GeoJSONCollection } from '../common/geojson.interface';
 
 @Injectable()
@@ -10,13 +11,15 @@ export class CaneriaService {
   constructor(
     @InjectRepository(CaneriaEntity)
     private readonly caneriaRepository: Repository<CaneriaEntity>,
-    @InjectRepository(TanqueEntity)
-    private readonly tanqueRepository: Repository<TanqueEntity>,
+    @InjectRepository(ReservorioEntity)
+    private readonly reservorioRepository: Repository<ReservorioEntity>,
+    @InjectRepository(DomiciliarioEntity)
+    private readonly domiciliarioRepository: Repository<DomiciliarioEntity>,
   ) {}
 
   async findAllGeoJSON(): Promise<GeoJSONCollection> {
     const canerias = await this.caneriaRepository.find({
-      relations: ['tanqueOrigen', 'tanqueDestino'],
+      relations: ['reservorioOrigen', 'reservorioDestino', 'domiciliarioDestino'],
     });
 
     const features: GeoJSONFeature[] = canerias.map((caneria) => ({
@@ -29,8 +32,9 @@ export class CaneriaService {
       properties: {
         id: caneria.id,
         estado: caneria.estado || 'DESCONOCIDO',
-        tanque_origen_id: caneria.tanqueOrigen?.id,
-        tanque_destino_id: caneria.tanqueDestino?.id,
+        reservorio_origen_id: caneria.reservorioOrigen?.id,
+        reservorio_destino_id: caneria.reservorioDestino?.id,
+        domiciliario_destino_id: caneria.domiciliarioDestino?.id,
       },
     }));
 
@@ -40,18 +44,15 @@ export class CaneriaService {
     };
   }
 
-  async findByTanqueId(tanqueId: string): Promise<GeoJSONCollection> {
-    const tanque = await this.tanqueRepository.findOneBy({ id: tanqueId });
-    if (!tanque) {
-      throw new NotFoundException(`Tanque con ID ${tanqueId} no encontrado`);
-    }
+  async findByReservorioId(reservorioId: string): Promise<GeoJSONCollection> {
+    await this.reservorioRepository.findOneBy({ id: reservorioId });
 
     const canerias = await this.caneriaRepository.find({
       where: [
-        { tanqueOrigen: { id: tanqueId } },
-        { tanqueDestino: { id: tanqueId } },
+        { reservorioOrigen: { id: reservorioId } },
+        { reservorioDestino: { id: reservorioId } },
       ],
-      relations: ['tanqueOrigen', 'tanqueDestino'],
+      relations: ['reservorioOrigen', 'reservorioDestino', 'domiciliarioDestino'],
     });
 
     const features: GeoJSONFeature[] = canerias.map((caneria) => ({
@@ -64,8 +65,9 @@ export class CaneriaService {
       properties: {
         id: caneria.id,
         estado: caneria.estado || 'DESCONOCIDO',
-        tanque_origen_id: caneria.tanqueOrigen?.id,
-        tanque_destino_id: caneria.tanqueDestino?.id,
+        reservorio_origen_id: caneria.reservorioOrigen?.id,
+        reservorio_destino_id: caneria.reservorioDestino?.id,
+        domiciliario_destino_id: caneria.domiciliarioDestino?.id,
       },
     }));
 
@@ -106,5 +108,26 @@ export class CaneriaService {
     }
     await this.caneriaRepository.remove(caneria);
     return { message: `Caneria con ID ${id} eliminada` };
+  }
+
+  async crearCañeriaDesdeReservorio(reservorio: ReservorioEntity, domiciliario: DomiciliarioEntity): Promise<CaneriaEntity> {
+    if (!reservorio.ubicacion?.coordinates || !domiciliario.ubicacion?.coordinates) {
+      throw new Error('El reservorio y el domiciliario deben tener ubicación');
+    }
+
+    const [lngRes, latRes] = reservorio.ubicacion.coordinates;
+    const [lngDom, latDom] = domiciliario.ubicacion.coordinates;
+
+    const caneria = this.caneriaRepository.create({
+      ruta: {
+        type: 'LineString',
+        coordinates: [[lngRes, latRes], [lngDom, latDom]],
+      },
+      estado: 'ACTIVO',
+      reservorioOrigen: reservorio,
+      domiciliarioDestino: domiciliario,
+    });
+
+    return this.caneriaRepository.save(caneria);
   }
 }

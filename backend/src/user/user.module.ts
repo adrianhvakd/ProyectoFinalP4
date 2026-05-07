@@ -3,10 +3,11 @@ import { UserService } from './user.service';
 import { UserController } from './user.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from './entities/user.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity, TanqueEntity])],
+  imports: [TypeOrmModule.forFeature([UserEntity, ReservorioEntity, DomiciliarioEntity])],
   controllers: [UserController],
   providers: [UserService],
 })

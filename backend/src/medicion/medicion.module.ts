@@ -5,10 +5,12 @@ import { MedicionGateway } from './medicion.gateway';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { MedicionEntity } from './entities/medicion.entity';
 import { SensorEntity } from 'src/sensor/entities/sensor.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
+import { DispositivoESP32Entity } from 'src/dispositivo-esp32/entities/dispositivo-esp32.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([MedicionEntity, SensorEntity, TanqueEntity])],
+  imports: [TypeOrmModule.forFeature([MedicionEntity, SensorEntity, ReservorioEntity, DomiciliarioEntity, DispositivoESP32Entity])],
   controllers: [MedicionController],
   providers: [MedicionService, MedicionGateway],
   exports: [MedicionService],

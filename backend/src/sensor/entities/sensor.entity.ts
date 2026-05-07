@@ -1,5 +1,6 @@
 import { MedicionEntity } from 'src/medicion/entities/medicion.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 import { DispositivoESP32Entity } from 'src/dispositivo-esp32/entities/dispositivo-esp32.entity';
 import {
   Entity,
@@ -27,8 +28,11 @@ export class SensorEntity {
   @Column()
   unidad_medida?: string;
 
-  @ManyToOne(() => TanqueEntity, (tanque) => tanque.sensores)
-  tanque?: TanqueEntity;
+  @ManyToOne(() => ReservorioEntity, (reservorio) => reservorio.sensores, { nullable: true })
+  reservorio?: ReservorioEntity;
+
+  @ManyToOne(() => DomiciliarioEntity, (domiciliario) => domiciliario.sensores, { nullable: true })
+  domiciliario?: DomiciliarioEntity;
 
   @ManyToOne(() => DispositivoESP32Entity, (dispositivo) => dispositivo.sensores, { nullable: true })
   dispositivo?: DispositivoESP32Entity;

@@ -10,9 +10,14 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 export class SensorController {
   constructor(private readonly sensorService: SensorService) {}
 
-  @Get('tanque/:tanqueId')
-  findByTanque(@Param('tanqueId') tanqueId: string) {
-    return this.sensorService.findByTanque(tanqueId);
+  @Get('by-reservorio/:reservorioId')
+  findByReservorio(@Param('reservorioId') reservorioId: string) {
+    return this.sensorService.findByReservorio(reservorioId);
+  }
+
+  @Get('by-domiciliario/:domiciliarioId')
+  findByDomiciliario(@Param('domiciliarioId') domiciliarioId: string) {
+    return this.sensorService.findByDomiciliario(domiciliarioId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

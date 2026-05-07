@@ -9,7 +9,11 @@ export class CreateSensorDto {
 
   @IsUUID()
   @IsOptional()
-  tanqueId?: string;
+  reservorioId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  domiciliarioId?: string;
 
   @IsUUID()
   @IsOptional()

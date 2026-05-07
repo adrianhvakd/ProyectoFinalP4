@@ -34,11 +34,6 @@ export const routes: Routes = [
         loadComponent: () => import('./pages/admin/usuarios/usuarios.component').then(m => m.UsuariosComponent),
         canActivate: [adminGuard],
       },
-      {
-        path: 'registrar',
-        loadComponent: () => import('./pages/admin/registrar/registrar.component').then(m => m.RegistrarComponent),
-        canActivate: [adminGuard],
-      },
     ],
   },
   {

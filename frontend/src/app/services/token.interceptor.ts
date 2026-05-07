@@ -4,6 +4,8 @@ import { Observable, tap } from 'rxjs';
 let accessToken: string | null = null;
 
 export function tokenInterceptor(req: HttpRequest<unknown>, next: HttpHandlerFn): Observable<HttpEvent<unknown>> {
+  req = req.clone({ withCredentials: true });
+
   if (accessToken) {
     req = req.clone({
       setHeaders: {

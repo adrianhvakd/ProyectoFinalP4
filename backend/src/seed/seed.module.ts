@@ -3,7 +3,8 @@ import { SeedService } from './seed.service';
 import { SeedController } from './seed.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserEntity } from 'src/user/entities/user.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 import { ZonaEntity } from 'src/zona/entities/zona.entity';
 import { CaneriaEntity } from 'src/caneria/entities/caneria.entity';
 import { SensorEntity } from 'src/sensor/entities/sensor.entity';
@@ -14,7 +15,8 @@ import { MedicionEntity } from 'src/medicion/entities/medicion.entity';
   imports: [
     TypeOrmModule.forFeature([
       UserEntity,
-      TanqueEntity,
+      ReservorioEntity,
+      DomiciliarioEntity,
       ZonaEntity,
       CaneriaEntity,
       SensorEntity,

@@ -3,7 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserEntity } from 'src/user/entities/user.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 import { ZonaEntity } from 'src/zona/entities/zona.entity';
 import { CaneriaEntity } from 'src/caneria/entities/caneria.entity';
 import { SensorEntity } from 'src/sensor/entities/sensor.entity';
@@ -17,8 +18,10 @@ export class SeedService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
-    @InjectRepository(TanqueEntity)
-    private readonly tanqueRepository: Repository<TanqueEntity>,
+    @InjectRepository(ReservorioEntity)
+    private readonly reservorioRepository: Repository<ReservorioEntity>,
+    @InjectRepository(DomiciliarioEntity)
+    private readonly domiciliarioRepository: Repository<DomiciliarioEntity>,
     @InjectRepository(ZonaEntity)
     private readonly zonaRepository: Repository<ZonaEntity>,
     @InjectRepository(CaneriaEntity)
@@ -32,16 +35,16 @@ export class SeedService {
   ) {}
 
   async seed() {
-try {
+    try {
       await this.medicionRepository.createQueryBuilder().delete().execute();
       await this.sensorRepository.createQueryBuilder().delete().execute();
       await this.dispositivoRepository.createQueryBuilder().delete().execute();
       await this.caneriaRepository.createQueryBuilder().delete().execute();
       await this.zonaRepository.createQueryBuilder().delete().execute();
-      await this.tanqueRepository.createQueryBuilder().delete().execute();
+      await this.domiciliarioRepository.createQueryBuilder().delete().execute();
+      await this.reservorioRepository.createQueryBuilder().delete().execute();
       await this.userRepository.createQueryBuilder().delete().execute();
 
-      // Usuarios
       const hashedAdmin = await bcrypt.hash('admin123', 10);
       const hashedUser = await bcrypt.hash('user123', 10);
 
@@ -55,74 +58,90 @@ try {
         email: 'user2@test.com', password: hashedUser, nombre: 'María García', role: 'USER',
       });
 
-      // Tanques admin - Potosí (centro aproximado: -19.57, -65.75)
-      const t1 = await this.tanqueRepository.save({
-        nombre: 'Tanque Central Potosí', tipo: 'RESERVORIO_PUBLICO', capacidad_max: 100000, altura_max: 15,
+      const r1 = await this.reservorioRepository.save({
+        nombre: 'Reservorio Central Potosí', capacidad_max: 100000, altura_max: 15, radio_cobertura: 1500,
         ubicacion: { type: 'Point', coordinates: [-65.75, -19.57] }, user: admin,
       });
-      const t2 = await this.tanqueRepository.save({
-        nombre: 'Tanque Norte Cantatira', tipo: 'RESERVORIO_PUBLICO', capacidad_max: 80000, altura_max: 12,
+      const r2 = await this.reservorioRepository.save({
+        nombre: 'Reservorio Norte Cantatira', capacidad_max: 80000, altura_max: 12, radio_cobertura: 1000,
         ubicacion: { type: 'Point', coordinates: [-65.735, -19.555] }, user: admin,
       });
-      const t3 = await this.tanqueRepository.save({
-        nombre: 'Tanque Sur Huacata', tipo: 'RESERVORIO_PUBLICO', capacidad_max: 60000, altura_max: 10,
+      const r3 = await this.reservorioRepository.save({
+        nombre: 'Reservorio Sur Huacata', capacidad_max: 60000, altura_max: 10, radio_cobertura: 800,
         ubicacion: { type: 'Point', coordinates: [-65.765, -19.585] }, user: admin,
       });
-      const t4 = await this.tanqueRepository.save({
-        nombre: 'Tanque Este Villa Dolores', tipo: 'RESERVORIO_PUBLICO', capacidad_max: 50000, altura_max: 8,
+      const r4 = await this.reservorioRepository.save({
+        nombre: 'Reservorio Este Villa Dolores', capacidad_max: 50000, altura_max: 8, radio_cobertura: 600,
         ubicacion: { type: 'Point', coordinates: [-65.725, -19.57] }, user: admin,
       });
 
-      // Tanques user1
-      const t5 = await this.tanqueRepository.save({
-        nombre: 'Tanque Juan - Centro', tipo: 'DOMICILIARIO', capacidad_max: 5000, altura_max: 3,
-        ubicacion: { type: 'Point', coordinates: [-65.745, -19.575] }, user: user1,
+      const d1 = await this.domiciliarioRepository.save({
+        nombre: 'Tanque Juan - Centro', capacidad_max: 5000, altura_max: 3,
+        ubicacion: { type: 'Point', coordinates: [-65.745, -19.575] }, reservorio: r1, user: user1,
       });
-      const t6 = await this.tanqueRepository.save({
-        nombre: 'Tanque Juan - Casa', tipo: 'DOMICILIARIO', capacidad_max: 3000, altura_max: 2,
-        ubicacion: { type: 'Point', coordinates: [-65.73, -19.565] }, user: user1,
+      const d2 = await this.domiciliarioRepository.save({
+        nombre: 'Tanque Juan - Casa', capacidad_max: 3000, altura_max: 2,
+        ubicacion: { type: 'Point', coordinates: [-65.73, -19.565] }, reservorio: r2, user: user1,
       });
-
-      // Tanques user2
-      const t7 = await this.tanqueRepository.save({
-        nombre: 'Tanque María - Villa Fatima', tipo: 'DOMICILIARIO', capacidad_max: 4000, altura_max: 2.5,
-        ubicacion: { type: 'Point', coordinates: [-65.76, -19.56] }, user: user2,
+      const d3 = await this.domiciliarioRepository.save({
+        nombre: 'Tanque María - Villa Fatima', capacidad_max: 4000, altura_max: 2.5,
+        ubicacion: { type: 'Point', coordinates: [-65.76, -19.56] }, reservorio: r3, user: user2,
       });
-      const t8 = await this.tanqueRepository.save({
-        nombre: 'Tanque María - Centro', tipo: 'DOMICILIARIO', capacidad_max: 2500, altura_max: 1.8,
-        ubicacion: { type: 'Point', coordinates: [-65.755, -19.58] }, user: user2,
+      const d4 = await this.domiciliarioRepository.save({
+        nombre: 'Tanque María - Centro', capacidad_max: 2500, altura_max: 1.8,
+        ubicacion: { type: 'Point', coordinates: [-65.755, -19.58] }, reservorio: r3, user: user2,
       });
 
-      // Dispositivos ESP32 (al menos 1 por tanque)
       const dispositivos: DispositivoESP32Entity[] = [];
-      const tankIds = [t1, t2, t3, t4, t5, t6, t7, t8];
-      const nombresEsp = ['ESP-001', 'ESP-002', 'ESP-003', 'ESP-004', 'ESP-005', 'ESP-006', 'ESP-007', 'ESP-008'];
-      const ips = ['192.168.1.101', '192.168.1.102', '192.168.1.103', '192.168.1.104', '192.168.1.105', '192.168.1.106', '192.168.1.107', '192.168.1.108'];
-      
-      for (let i = 0; i < tankIds.length; i++) {
+      const reservorios = [r1, r2, r3, r4];
+      const domiciliarios = [d1, d2, d3, d4];
+      const nombresEsp = ['ESP-Central', 'ESP-Norte', 'ESP-Sur', 'ESP-Este', 'ESP-Juan1', 'ESP-Juan2', 'ESP-Maria1', 'ESP-Maria2'];
+
+      for (let i = 0; i < 4; i++) {
         const disp = await this.dispositivoRepository.save({
           nombre: nombresEsp[i],
-          ip_address: ips[i],
-          puerto: 80,
+          api_key: this.generateApiKey(),
           estado: 'ACTIVO',
-          tanque: tankIds[i],
+          reservorio: reservorios[i],
         });
         dispositivos.push(disp);
       }
 
-      // Sensores (al menos 1 por tanque, relacionados a su ESP32)
-      const sensores: SensorEntity[] = [];
-      for (let i = 0; i < tankIds.length; i++) {
-        const sn = await this.sensorRepository.save({ 
-          tipo: 'NIVEL', unidad_medida: '%', tanque: tankIds[i], dispositivo: dispositivos[i] 
+      for (let i = 0; i < 4; i++) {
+        const disp = await this.dispositivoRepository.save({
+          nombre: nombresEsp[i + 4],
+          api_key: this.generateApiKey(),
+          estado: 'ACTIVO',
+          domiciliario: domiciliarios[i],
         });
-        const sp = await this.sensorRepository.save({ 
-          tipo: 'PH', unidad_medida: 'pH', tanque: tankIds[i], dispositivo: dispositivos[i] 
-        });
-        sensores.push(sn, sp);
+        dispositivos.push(disp);
       }
 
-      // Mediciones
+      const todosTanques = [...reservorios, ...domiciliarios];
+      const sensores: SensorEntity[] = [];
+
+      for (let i = 0; i < todosTanques.length; i++) {
+        const t = todosTanques[i];
+        if (i < 4) {
+          const sn = await this.sensorRepository.save({ 
+            tipo: 'NIVEL', unidad_medida: '%', reservorio: t as ReservorioEntity, dispositivo: dispositivos[i] 
+          });
+          const sp = await this.sensorRepository.save({ 
+            tipo: 'PH', unidad_medida: 'pH', reservorio: t as ReservorioEntity, dispositivo: dispositivos[i] 
+          });
+          sensores.push(sn, sp);
+        } else {
+          const idx = i - 4;
+          const sn = await this.sensorRepository.save({ 
+            tipo: 'NIVEL', unidad_medida: '%', domiciliario: t as DomiciliarioEntity, dispositivo: dispositivos[i] 
+          });
+          const sp = await this.sensorRepository.save({ 
+            tipo: 'PH', unidad_medida: 'pH', domiciliario: t as DomiciliarioEntity, dispositivo: dispositivos[i] 
+          });
+          sensores.push(sn, sp);
+        }
+      }
+
       for (const s of sensores) {
         for (let i = 0; i < 10; i++) {
           const f = new Date();
@@ -134,87 +153,92 @@ try {
         }
       }
 
-      // Zonas (más pequeñas y centradas en Potosí)
       await this.zonaRepository.save({
         nombre: 'Zona Centro Potosí',
+        radio_cobertura: 1500,
         perimetro: { type: 'Polygon', coordinates: [[
           [-65.77, -19.59], [-65.73, -19.59], [-65.73, -19.55], [-65.77, -19.55], [-65.77, -19.59]
         ]]},
-        tanque: t1,
+        reservorio: r1,
       });
 
       await this.zonaRepository.save({
         nombre: 'Zona Norte Cantatira',
+        radio_cobertura: 1000,
         perimetro: { type: 'Polygon', coordinates: [[
           [-65.75, -19.57], [-65.72, -19.57], [-65.72, -19.54], [-65.75, -19.54], [-65.75, -19.57]
         ]]},
-        cantidad_usuarios: 150,
-        tanque: t2,
+        reservorio: r2,
       });
 
       await this.zonaRepository.save({
         nombre: 'Zona Sur Huacata',
+        radio_cobertura: 800,
         perimetro: { type: 'Polygon', coordinates: [[
           [-65.79, -19.61], [-65.76, -19.61], [-65.76, -19.57], [-65.79, -19.57], [-65.79, -19.61]
         ]]},
-        cantidad_usuarios: 200,
-        tanque: t3,
+        reservorio: r3,
       });
 
-      // Cañerías (red más completa entre tanques)
-      // Del central a todos los demás
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.75, -19.57], [-65.735, -19.555]] },
-        estado: 'ACTIVO', tanqueOrigen: t1, tanqueDestino: t2,
+        estado: 'ACTIVO', reservorioOrigen: r1, reservorioDestino: r2,
       });
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.75, -19.57], [-65.765, -19.585]] },
-        estado: 'ACTIVO', tanqueOrigen: t1, tanqueDestino: t3,
+        estado: 'ACTIVO', reservorioOrigen: r1, reservorioDestino: r3,
       });
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.75, -19.57], [-65.725, -19.57]] },
-        estado: 'ACTIVO', tanqueOrigen: t1, tanqueDestino: t4,
+        estado: 'ACTIVO', reservorioOrigen: r1, reservorioDestino: r4,
       });
-      
-      // Conexiones entre reservorios (t2, t3, t4)
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.735, -19.555], [-65.725, -19.57]] },
-        estado: 'ACTIVO', tanqueOrigen: t2, tanqueDestino: t4,
+        estado: 'ACTIVO', reservorioOrigen: r2, reservorioDestino: r4,
       });
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.765, -19.585], [-65.735, -19.555]] },
-        estado: 'ACTIVO', tanqueOrigen: t3, tanqueDestino: t2,
+        estado: 'ACTIVO', reservorioOrigen: r3, reservorioDestino: r2,
       });
-      
-      // Conexiones a domiciliarios
+
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.735, -19.555], [-65.73, -19.565]] },
-        estado: 'ACTIVO', tanqueOrigen: t2, tanqueDestino: t6,
+        estado: 'ACTIVO', reservorioOrigen: r2, domiciliarioDestino: d2,
       });
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.75, -19.57], [-65.745, -19.575]] },
-        estado: 'ACTIVO', tanqueOrigen: t1, tanqueDestino: t5,
+        estado: 'ACTIVO', reservorioOrigen: r1, domiciliarioDestino: d1,
       });
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.765, -19.585], [-65.755, -19.58]] },
-        estado: 'ACTIVO', tanqueOrigen: t3, tanqueDestino: t8,
+        estado: 'ACTIVO', reservorioOrigen: r3, domiciliarioDestino: d4,
       });
       await this.caneriaRepository.save({
         ruta: { type: 'LineString', coordinates: [[-65.765, -19.585], [-65.76, -19.56]] },
-        estado: 'ACTIVO', tanqueOrigen: t3, tanqueDestino: t7,
+        estado: 'ACTIVO', reservorioOrigen: r3, domiciliarioDestino: d3,
       });
 
       return { message: 'Seed completado - Potosí Bolivia', 
-        tanques: 8, 
+        reservorios: 4, 
+        domiciliarios: 4,
         dispositivos: 8, 
         sensores: 16, 
         zonas: 3, 
-        canerias: 8,
+        canerias: 9,
         usuarios: ['admin@test.com', 'user1@test.com', 'user2@test.com'] 
       };
     } catch (e) {
       this.logger.error(e.message);
       return { error: e.message };
     }
+  }
+
+  private generateApiKey(): string {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let key = '';
+    for (let i = 0; i < 32; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return key;
   }
 }

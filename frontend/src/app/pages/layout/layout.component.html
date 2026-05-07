@@ -1,0 +1,127 @@
+<div class="drawer">
+  <input id="my-drawer" type="checkbox" class="drawer-toggle" />
+  
+  <div class="drawer-content flex flex-col z-0" style="background-color: var(--b2);">
+    <div class="navbar bg-base-100 shadow-sm">
+      <div class="flex-none">
+        <label for="my-drawer" class="btn btn-square btn-ghost drawer-button">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" class="inline-block w-6 h-6 stroke-current">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+          </svg>
+        </label>
+      </div>
+      <div class="flex-1">
+        <a class="btn btn-ghost text-xl">Sistema de Tanques</a>
+      </div>
+      <div class="flex-none gap-2">
+        <div class="dropdown dropdown-end">
+          <div tabindex="0" role="button" class="btn btn-ghost btn-circle avatar">
+            <div class="w-10 rounded-full bg-primary text-primary-content flex items-center justify-center">
+              <span class="text-sm font-bold">{{ user()?.nombre?.charAt(0) }}</span>
+            </div>
+          </div>
+          <ul tabindex="0" class="mt-3 z-[1] p-2 shadow menu menu-sm dropdown-content bg-base-100 rounded-box w-52">
+            <li class="menu-title">
+              <span class="font-semibold">{{ user()?.nombre }}</span>
+            </li>
+            <li><a class="text-sm text-base-content/70">{{ user()?.role === 'ADMIN' ? 'Administrador' : 'Usuario' }}</a></li>
+            <div class="divider my-1"></div>
+            <li><a (click)="logout()" class="text-error">Cerrar Sesión</a></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="p-4">
+      <router-outlet></router-outlet>
+    </div>
+  </div>
+
+  <div class="drawer-side">
+    <label for="my-drawer" aria-label="close sidebar" class="drawer-overlay"></label>
+    <aside class="bg-base-100 min-h-full w-80" style="width: 320px; z-index: 1000;">
+      <div class="p-5 bg-gradient-to-br from-base-200 to-base-300">
+        <div class="flex items-center gap-4">
+          <div class="avatar">
+            <div class="w-14 h-14 rounded-full bg-primary text-primary-content flex items-center justify-center shadow-lg">
+              <span class="text-2xl font-bold">{{ user()?.nombre?.charAt(0) }}</span>
+            </div>
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-lg truncate">{{ user()?.nombre }}</p>
+            <p class="text-xs text-base-content/60 flex items-center gap-1">
+              @if (isAdmin()) {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                </svg>
+                Administrador
+              } @else {
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Usuario
+              }
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="w-full">
+        <ul class="menu bg-base-100 rounded-box w-full">
+          @if (isAdmin()) {
+            <li>
+              <a routerLink="/dashboard" routerLinkActive="active" class="rounded-lg" (click)="closeSidebar()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Dashboard
+              </a>
+            </li>
+            <li>
+              <a routerLink="/mis-tanques" routerLinkActive="active" class="rounded-lg" (click)="closeSidebar()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+                Tanques
+              </a>
+            </li>
+            <li>
+              <a routerLink="/usuarios" routerLinkActive="active" class="rounded-lg" (click)="closeSidebar()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m0 0a6 6 0 01-12 0v1z" />
+                </svg>
+                Usuarios
+              </a>
+            </li>
+          } @else {
+            <li>
+              <a routerLink="/dashboard" routerLinkActive="active" class="rounded-lg" (click)="closeSidebar()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                </svg>
+                Mi Dashboard
+              </a>
+            </li>
+            <li>
+              <a routerLink="/mis-tanques" routerLinkActive="active" class="rounded-lg" (click)="closeSidebar()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0l2-2m-2 2l-2-2m2 2l2 2" />
+                </svg>
+                Tanques
+              </a>
+            </li>
+          }
+        </ul>
+      </div>
+
+      <div class="absolute bottom-0 w-full p-4 border-t border-base-300 bg-base-100">
+        <button class="btn btn-ghost btn-block rounded-lg justify-start text-error hover:bg-error hover:text-error-content" (click)="logout()">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+          Cerrar Sesión
+        </button>
+      </div>
+    </aside>
+  </div>
+</div>

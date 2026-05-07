@@ -8,21 +8,19 @@ import { Roles } from 'src/auth/decorators/roles.decorator';
 export class DispositivoEsp32Controller {
   constructor(private readonly service: DispositivoEsp32Service) {}
 
-  @Get('tanque/:tanqueId')
-  findByTanque(@Param('tanqueId') tanqueId: string) {
-    return this.service.findByTanque(tanqueId);
-  }
-
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('ADMIN')
-  @Post()
-  create(@Body() data: { nombre: string; ip_address: string; puerto?: number; estado?: string; tanqueId: string }) {
-    return this.service.create(data);
-  }
-
   @Get()
   findAll() {
     return this.service.findAll();
+  }
+
+  @Get('by-reservorio/:reservorioId')
+  findByReservorio(@Param('reservorioId') reservorioId: string) {
+    return this.service.findByReservorio(reservorioId);
+  }
+
+  @Get('by-domiciliario/:domiciliarioId')
+  findByDomiciliario(@Param('domiciliarioId') domiciliarioId: string) {
+    return this.service.findByDomiciliario(domiciliarioId);
   }
 
   @Get(':id')
@@ -32,9 +30,23 @@ export class DispositivoEsp32Controller {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('ADMIN')
+  @Post()
+  create(@Body() createDto: { nombre: string; reservorioId?: string; domiciliarioId?: string }) {
+    return this.service.create(createDto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
   @Patch(':id')
-  update(@Param('id') id: string, @Body() data: any) {
-    return this.service.update(id, data);
+  update(@Param('id') id: string, @Body() updateDto: { nombre?: string; estado?: string }) {
+    return this.service.update(id, updateDto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('ADMIN')
+  @Patch(':id/regenerate-key')
+  regenerateApiKey(@Param('id') id: string) {
+    return this.service.regenerateApiKey(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -9,7 +9,8 @@ export interface GeoJSONFeature {
     id: string;
     nombre?: string;
     estado?: string;
-    tanque_id?: string;
+    reservorio_id?: string;
+    radio_cobertura?: number;
   };
 }
 

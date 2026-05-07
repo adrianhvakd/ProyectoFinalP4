@@ -1,6 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, tap, catchError, of } from 'rxjs';
+import { Observable, tap, catchError, of, forkJoin, map } from 'rxjs';
 import { setToken } from './token.interceptor';
 
 export interface User {
@@ -26,7 +26,8 @@ export interface GeoJSONFeature {
     id: string;
     nombre?: string;
     estado?: string;
-    tanque_id?: string;
+    reservorio_id?: string;
+    radio_cobertura?: number;
   };
 }
 
@@ -35,22 +36,39 @@ export interface GeoJSONCollection {
   features: GeoJSONFeature[];
 }
 
-export interface Tanque {
+export interface Reservorio {
   id: string;
   nombre: string;
-  tipo: 'RESERVORIO_PUBLICO' | 'DOMICILIARIO';
   capacidad_max: number;
   altura_max: number;
+  radio_cobertura: number;
+  tipo?: 'RESERVORIO_PUBLICO' | 'DOMICILIARIO';
   ubicacion: any;
   user?: User;
   sensores?: Sensor[];
+  dispositivos?: DispositivoESP32[];
+}
+
+export interface Domiciliario {
+  id: string;
+  nombre: string;
+  capacidad_max: number;
+  altura_max: number;
+  ubicacion: any;
+  reservorioId: string;
+  reservorio?: Reservorio;
+  user?: User;
+  sensores?: Sensor[];
+  dispositivos?: DispositivoESP32[];
 }
 
 export interface Sensor {
   id: string;
   tipo: 'NIVEL' | 'PH' | 'TURBIDEZ' | 'TEMPERATURA' | 'FLUJO';
   unidad_medida: string;
-  tanque?: Tanque;
+  reservorio?: Reservorio;
+  domiciliario?: Domiciliario;
+  dispositivo?: DispositivoESP32;
   mediciones?: Medicion[];
 }
 
@@ -64,18 +82,22 @@ export interface Medicion {
 export interface DispositivoESP32 {
   id: string;
   nombre: string;
-  ip_address: string;
-  puerto: number;
+  api_key: string;
   estado: 'ACTIVO' | 'INACTIVO';
-  tanque?: Tanque;
+  reservorio?: Reservorio;
+  domiciliario?: Domiciliario;
+  sensores?: Sensor[];
 }
 
 export interface Alerta {
   tanqueId: string;
-  tanqueNombre: string;
+  tankeNombre: string;
   tipo: 'NIVEL_ALTO' | 'NIVEL_BAJO' | 'PH_ALTO' | 'PH_BAJO';
   mensaje: string;
 }
+
+// Compatibilidad - Tanque es alias de Reservorio
+export type Tanque = Reservorio;
 
 @Injectable({
   providedIn: 'root',
@@ -89,9 +111,18 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
-  checkAuth(): Observable<User | null> {
-    // Just return current user if available, no need to call profile
-    return of(this.currentUser());
+  validateSession(): Observable<User | null> {
+    return this.http
+      .get<User>(`${this.baseUrl}/auth/validate`, { withCredentials: true })
+      .pipe(
+        tap((user) => {
+          this.currentUser.set(user);
+        }),
+        catchError(() => {
+          this.currentUser.set(null);
+          return of(null);
+        })
+      );
   }
 
   login(email: string, password: string): Observable<LoginResponse> {
@@ -126,24 +157,91 @@ export class ApiService {
       );
   }
 
-  getTanques(): Observable<Tanque[]> {
-    return this.http.get<Tanque[]>(`${this.baseUrl}/tanque`);
+  // Reservorios
+  getReservorios(): Observable<Reservorio[]> {
+    return this.http.get<Reservorio[]>(`${this.baseUrl}/reservorio`);
   }
 
-  getTanqueById(id: string): Observable<Tanque> {
-    return this.http.get<Tanque>(`${this.baseUrl}/tanque/${id}`);
+  getReservorioById(id: string): Observable<Reservorio> {
+    return this.http.get<Reservorio>(`${this.baseUrl}/reservorio/${id}`);
   }
 
-createTanque(data: any): Observable<Tanque> {
-    return this.http.post<Tanque>(`${this.baseUrl}/tanque`, data, { withCredentials: true });
+  createReservorio(data: any): Observable<Reservorio> {
+    return this.http.post<Reservorio>(`${this.baseUrl}/reservorio`, data, { withCredentials: true });
   }
 
-  updateTanque(id: string, data: any): Observable<Tanque> {
-    return this.http.patch<Tanque>(`${this.baseUrl}/tanque/${id}`, data, { withCredentials: true });
+  updateReservorio(id: string, data: any): Observable<Reservorio> {
+    return this.http.patch<Reservorio>(`${this.baseUrl}/reservorio/${id}`, data, { withCredentials: true });
   }
 
-  deleteTanque(id: string): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/tanque/${id}`, { withCredentials: true });
+  deleteReservorio(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/reservorio/${id}`, { withCredentials: true });
+  }
+
+  getRadioMinimo(id: string): Observable<number> {
+    return this.http.get<number>(`${this.baseUrl}/reservorio/${id}/radio-minimo`);
+  }
+
+  // Domiciliarios
+  getDomiciliarios(): Observable<Domiciliario[]> {
+    return this.http.get<Domiciliario[]>(`${this.baseUrl}/domiciliario`);
+  }
+
+ getDomiciliarioById(id: string): Observable<Domiciliario> {
+    return this.http.get<Domiciliario>(`${this.baseUrl}/domiciliario/${id}`);
+  }
+
+  getDomiciliariosByReservorio(reservorioId: string): Observable<Domiciliario[]> {
+    return this.http.get<Domiciliario[]>(`${this.baseUrl}/domiciliario/by-reservorio/${reservorioId}`);
+  }
+
+  // Compatibilidad
+  getTanques(): Observable<Reservorio[]> {
+    return forkJoin([
+      this.getReservorios(),
+      this.getDomiciliarios()
+    ]).pipe(
+      map(([reservorios, domiciliarios]) => {
+        const todos = [...reservorios, ...domiciliarios] as any[];
+        return todos.map(t => ({
+          ...t,
+          tipo: t.reservorio?.id ? 'DOMICILIARIO' : 'RESERVORIO_PUBLICO'
+        }));
+      })
+    );
+  }
+
+  getTanqueById(id: string): Observable<Reservorio> {
+    return this.getReservorioById(id);
+  }
+
+  createTanque(data: any): Observable<any> {
+    if (data.tipo === 'DOMICILIARIO') {
+      return this.createDomiciliario(data);
+    }
+    return this.createReservorio(data);
+  }
+
+  updateTanque(id: string, data: any): Observable<any> {
+    if (data.tipo === 'DOMICILIARIO') {
+      return this.updateDomiciliario(id, data);
+    }
+    return this.updateReservorio(id, data);
+  }
+
+  deleteTanque(id: string, tipo?: string): Observable<any> {
+    if (tipo === 'DOMICILIARIO') {
+      return this.http.delete<any>(`${this.baseUrl}/domiciliario/${id}`, { withCredentials: true });
+    }
+    return this.deleteReservorio(id);
+  }
+
+  createDomiciliario(data: any): Observable<any> {
+    return this.http.post<any>(`${this.baseUrl}/domiciliario`, data, { withCredentials: true });
+  }
+
+  updateDomiciliario(id: string, data: any): Observable<any> {
+    return this.http.patch<any>(`${this.baseUrl}/domiciliario/${id}`, data, { withCredentials: true });
   }
 
   // Sensores
@@ -151,8 +249,16 @@ createTanque(data: any): Observable<Tanque> {
     return this.http.get<any[]>(`${this.baseUrl}/sensor`);
   }
 
+  getSensoresByReservorio(reservorioId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/sensor/by-reservorio/${reservorioId}`);
+  }
+
+  getSensoresByDomiciliario(domiciliarioId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/sensor/by-domiciliario/${domiciliarioId}`);
+  }
+
   getSensoresByTanque(tanqueId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/sensor/tanque/${tanqueId}`);
+    return this.getSensoresByReservorio(tanqueId);
   }
 
   createSensor(data: any): Observable<any> {
@@ -168,8 +274,16 @@ createTanque(data: any): Observable<Tanque> {
   }
 
   // Dispositivos ESP32
+  getDispositivosByReservorio(reservorioId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/dispositivo-esp32/by-reservorio/${reservorioId}`);
+  }
+
+  getDispositivosByDomiciliario(domiciliarioId: string): Observable<any[]> {
+    return this.http.get<any[]>(`${this.baseUrl}/dispositivo-esp32/by-domiciliario/${domiciliarioId}`);
+  }
+
   getDispositivosByTanque(tanqueId: string): Observable<any[]> {
-    return this.http.get<any[]>(`${this.baseUrl}/dispositivo-esp32/tanque/${tanqueId}`);
+    return this.getDispositivosByReservorio(tanqueId);
   }
 
   createDispositivo(data: any): Observable<any> {
@@ -193,12 +307,20 @@ createTanque(data: any): Observable<Tanque> {
     return this.http.get<GeoJSONCollection>(`${this.baseUrl}/caneria/geojson`);
   }
 
+  getCaneriasByReservorio(reservorioId: string): Observable<GeoJSONCollection> {
+    return this.http.get<GeoJSONCollection>(`${this.baseUrl}/caneria/by-reservorio/${reservorioId}`);
+  }
+
   getCaneriasByTanque(tanqueId: string): Observable<GeoJSONCollection> {
-    return this.http.get<GeoJSONCollection>(`${this.baseUrl}/caneria/by-tanque/${tanqueId}`);
+    return this.getCaneriasByReservorio(tanqueId);
+  }
+
+  getZonaByReservorio(reservorioId: string): Observable<GeoJSONFeature | null> {
+    return this.http.get<GeoJSONFeature | null>(`${this.baseUrl}/zona/by-reservorio/${reservorioId}`);
   }
 
   getZonaByTanque(tanqueId: string): Observable<GeoJSONFeature | null> {
-    return this.http.get<GeoJSONFeature | null>(`${this.baseUrl}/zona/by-tanque/${tanqueId}`);
+    return this.getZonaByReservorio(tanqueId);
   }
 
   // Mediciones
@@ -210,10 +332,10 @@ createTanque(data: any): Observable<Tanque> {
     return this.http.get<Medicion[]>(`${this.baseUrl}/medicion/sensor/${sensorId}`);
   }
 
-  createMedicion(sensorId: string, valor: number): Observable<Medicion> {
+  createMedicion(sensorId: string, valor: number, apiKey?: string): Observable<Medicion> {
     return this.http.post<Medicion>(
       `${this.baseUrl}/medicion`,
-      { sensorId, valor },
+      { sensorId, valor, apiKey },
       { withCredentials: true },
     );
   }
@@ -222,5 +344,22 @@ createTanque(data: any): Observable<Tanque> {
     return this.http.post(`${this.baseUrl}/seed`, {}, {
       withCredentials: true,
     });
+  }
+
+  // Usuarios
+  getUsers(): Observable<User[]> {
+    return this.http.get<User[]>(`${this.baseUrl}/user`, { withCredentials: true });
+  }
+
+  createUser(data: { email: string; password: string; nombre: string; role: 'ADMIN' | 'USER' }): Observable<User> {
+    return this.http.post<User>(`${this.baseUrl}/user`, data, { withCredentials: true });
+  }
+
+  updateUser(id: string, data: { email?: string; password?: string; nombre?: string; role?: 'ADMIN' | 'USER' }): Observable<User> {
+    return this.http.patch<User>(`${this.baseUrl}/user/${id}`, data, { withCredentials: true });
+  }
+
+  deleteUser(id: string): Observable<any> {
+    return this.http.delete(`${this.baseUrl}/user/${id}`, { withCredentials: true });
   }
 }

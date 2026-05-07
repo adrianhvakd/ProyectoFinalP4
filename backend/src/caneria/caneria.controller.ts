@@ -15,9 +15,9 @@ export class CaneriaController {
     return this.caneriaService.findAllGeoJSON();
   }
 
-  @Get('by-tanque/:id')
-  async findByTanqueId(@Param('id') id: string) {
-    return this.caneriaService.findByTanqueId(id);
+  @Get('by-reservorio/:id')
+  async findByReservorioId(@Param('id') id: string) {
+    return this.caneriaService.findByReservorioId(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

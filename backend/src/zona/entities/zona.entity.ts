@@ -5,13 +5,12 @@ import {
   Entity,
   Index,
   ManyToOne,
-  OneToOne,
   PrimaryGeneratedColumn,
   JoinColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Polygon } from 'geojson';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
 import { v4 } from 'uuid';
 
 @Entity('zonas')
@@ -22,8 +21,8 @@ export class ZonaEntity {
   @Column()
   nombre?: string;
 
-  @Column({ default: 0 })
-  cantidad_usuarios?: number;
+  @Column({ default: 500 })
+  radio_cobertura?: number;
 
   @Index({ spatial: true })
   @Column({
@@ -33,9 +32,11 @@ export class ZonaEntity {
   })
   perimetro: Polygon;
 
-  @OneToOne(() => TanqueEntity, (tanque) => tanque.zona, { nullable: true })
+  @ManyToOne(() => ReservorioEntity, (reservorio) => reservorio.zona, {
+    nullable: true,
+  })
   @JoinColumn()
-  tanque?: TanqueEntity;
+  reservorio?: ReservorioEntity;
 
   @CreateDateColumn()
   createdAt?: Date;

@@ -15,9 +15,9 @@ export class ZonaController {
     return this.zonaService.findAllGeoJSON();
   }
 
-  @Get('by-tanque/:id')
-  async getZonaByTanque(@Param('id') id: string) {
-    return this.zonaService.getZonaByTanque(id);
+  @Get('by-reservorio/:id')
+  async getZonaByReservorio(@Param('id') id: string) {
+    return this.zonaService.getZonaByReservorio(id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

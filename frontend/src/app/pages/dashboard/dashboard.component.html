@@ -1,0 +1,126 @@
+<div class="space-y-6">
+  <h1 class="text-2xl font-bold">{{ esAdmin() ? 'Dashboard' : 'Mi Dashboard' }}</h1>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="stats shadow">
+      <div class="stat">
+        <div class="stat-title">Reservorios</div>
+        <div class="stat-value">{{ reservorios().length }}</div>
+        <div class="stat-actions">
+          <a routerLink="/mis-tanques" class="btn btn-xs btn-ghost">Ver todos</a>
+        </div>
+      </div>
+    </div>
+    <div class="stats shadow">
+      <div class="stat">
+        <div class="stat-title">Domiciliarios</div>
+        <div class="stat-value">{{ domiciliarios().length }}</div>
+      </div>
+    </div>
+    <div class="stats shadow">
+      <div class="stat">
+        <div class="stat-title">Total Tanques</div>
+        <div class="stat-value">{{ reservorios().length + domiciliarios().length }}</div>
+      </div>
+    </div>
+    <div class="stats shadow">
+      <div class="stat">
+        <div class="stat-title">Alertas Activas</div>
+        <div class="stat-value" [class.text-error]="alertas().length > 0">
+          {{ alertas().length }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+    <div class="bg-base-100 rounded-lg shadow p-4">
+      <h2 class="font-bold text-lg mb-4">Estado de Reservorios</h2>
+      <div class="space-y-2">
+        @for (r of reservorios(); track r.id) {
+          <div class="flex justify-between items-center p-2 bg-base-200 rounded">
+            <span class="font-medium">{{ r.nombre }}</span>
+            @if (getNivel(r); as nivel) {
+              <div class="flex items-center gap-2">
+                <progress class="progress progress-primary w-24" [value]="nivel" max="100"></progress>
+                <span class="text-sm">{{ nivel }}%</span>
+              </div>
+            } @else {
+              <span class="text-sm text-base-content/50">Sin datos</span>
+            }
+          </div>
+        }
+        @if (reservorios().length === 0) {
+          <p class="text-base-content/50 text-center py-4">No hay reservorios</p>
+        }
+      </div>
+    </div>
+
+    <div class="bg-base-100 rounded-lg shadow p-4">
+      <h2 class="font-bold text-lg mb-4">Últimas Mediciones</h2>
+      <div class="space-y-2">
+        @for (r of ultimasMediciones(); track r.id) {
+          <div class="p-2 bg-base-200 rounded">
+            <div class="font-medium text-sm">{{ r.nombre }}</div>
+            <div class="flex gap-4 text-xs mt-1">
+              @if (r.nivel !== null) {
+                <span>Nivel: <span [class]="r.nivel < 30 ? 'text-error' : ''">{{ r.nivel }}%</span></span>
+              }
+              @if (r.ph !== null) {
+                <span>pH: <span [class]="r.ph < 6 || r.ph > 8 ? 'text-error' : ''">{{ r.ph }}</span></span>
+              }
+              @if (r.turbidez !== null) {
+                <span>Turbidez: {{ r.turbidez }}</span>
+              }
+            </div>
+          </div>
+        }
+        @if (ultimasMediciones().length === 0) {
+          <p class="text-base-content/50 text-center py-4">Sin mediciones</p>
+        }
+      </div>
+    </div>
+  </div>
+
+  @if (alertas().length > 0) {
+    <div class="bg-base-100 rounded-lg shadow p-4">
+      <h2 class="font-bold text-lg mb-4 flex items-center gap-2">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-error" fill="none" viewBox="0 0 24 24" stroke="currentPath">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+        </svg>
+        Alertas Recientes
+      </h2>
+      <div class="overflow-x-auto">
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Tanque</th>
+              <th>Tipo</th>
+              <th>Mensaje</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (alerta of alertas(); track alerta.tanqueId) {
+              <tr class="hover">
+                <td>{{ alerta.tanqueNombre }}</td>
+                <td>
+                  <span class="badge badge-error">{{ alerta.tipo }}</span>
+                </td>
+                <td>{{ alerta.mensaje }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+
+  @if (alertas().length === 0 && reservorios().length > 0) {
+    <div class="alert alert-success">
+      <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+      </svg>
+      <span>Todos los tanques están operando normalmente</span>
+    </div>
+  }
+</div>

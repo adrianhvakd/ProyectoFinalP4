@@ -3,10 +3,10 @@ import { ZonaService } from './zona.service';
 import { ZonaController } from './zona.controller';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ZonaEntity } from './entities/zona.entity';
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ZonaEntity, TanqueEntity])],
+  imports: [TypeOrmModule.forFeature([ZonaEntity, ReservorioEntity])],
   controllers: [ZonaController],
   providers: [ZonaService],
 })

@@ -1,0 +1,79 @@
+<div class="space-y-4">
+  <div class="flex justify-between items-center">
+    <h1 class="text-2xl font-bold">Administración de Usuarios</h1>
+    <button class="btn btn-primary" (click)="mostrarFormulario()">
+      + Nuevo Usuario
+    </button>
+  </div>
+
+  <div class="overflow-x-auto bg-base-100 rounded-lg shadow">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (u of usuarios(); track u.id) {
+          <tr class="hover">
+            <td class="font-bold">{{ u.nombre }}</td>
+            <td>{{ u.email }}</td>
+            <td>
+              <span [class]="u.role === 'ADMIN' ? 'badge badge-primary' : 'badge badge-secondary'">
+                {{ u.role === 'ADMIN' ? 'Administrador' : 'Usuario' }}
+              </span>
+            </td>
+            <td>
+              <div class="flex gap-2">
+                <button class="btn btn-xs btn-outline" (click)="editarUsuario(u)">Editar</button>
+                <button class="btn btn-xs btn-outline btn-error" (click)="eliminarUsuario(u)">Eliminar</button>
+              </div>
+            </td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+
+  <div class="modal" [class.modal-open]="showForm()">
+    <div class="modal-box">
+      <h3 class="font-bold text-lg">{{ editando() ? 'Editar' : 'Nuevo' }} Usuario</h3>
+      
+      <form (ngSubmit)="guardar()" class="space-y-4 mt-4">
+        <label class="form-control w-full">
+          <span class="label">Nombre</span>
+          <input type="text" [(ngModel)]="form.nombre" name="nombre" class="input input-bordered w-full" required />
+        </label>
+
+        <label class="form-control w-full">
+          <span class="label">Email</span>
+          <input type="email" [(ngModel)]="form.email" name="email" class="input input-bordered w-full" required [disabled]="editando()" />
+        </label>
+
+        @if (!editando()) {
+          <label class="form-control w-full">
+            <span class="label">Contraseña</span>
+            <input type="password" [(ngModel)]="form.password" name="password" class="input input-bordered w-full" [required]="!editando()" />
+          </label>
+        }
+
+        <label class="form-control w-full">
+          <span class="label">Rol</span>
+          <select [(ngModel)]="form.role" name="role" class="select select-bordered w-full">
+            <option value="USER">Usuario</option>
+            <option value="ADMIN">Administrador</option>
+          </select>
+        </label>
+
+        <div class="modal-action">
+          <button type="button" class="btn" (click)="cancelar()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" [class.loading]="guardando()">Guardar</button>
+        </div>
+      </form>
+    </div>
+    <div class="modal-backdrop" (click)="cancelar()"></div>
+  </div>
+</div>

@@ -1,4 +1,5 @@
-import { TanqueEntity } from 'src/tanque/entities/tanque.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
+import { DomiciliarioEntity } from 'src/domicilio/entities/domicliario.entity';
 import {
   Entity,
   PrimaryGeneratedColumn,
@@ -27,8 +28,11 @@ export class UserEntity {
   @Column()
   nombre?: string;
 
-  @OneToMany(() => TanqueEntity, (tanque) => tanque.user)
-  tanques?: TanqueEntity[];
+  @OneToMany(() => ReservorioEntity, (reservorio) => reservorio.user)
+  tanques?: ReservorioEntity[];
+
+  @OneToMany(() => DomiciliarioEntity, (domicliario) => domicliario.user)
+  domiciliarios?: DomiciliarioEntity[];
 
   @CreateDateColumn()
   createdAt?: Date;

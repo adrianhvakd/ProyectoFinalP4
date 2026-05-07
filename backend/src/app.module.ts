@@ -5,7 +5,8 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm';
 import { getConfigDB } from './config/config.database';
 import { UserModule } from './user/user.module';
-import { TanqueModule } from './tanque/tanque.module';
+import { ReservorioModule } from './reservorio/reservorio.module';
+import { DomiciliarioModule } from './domicilio/domiciliario.module';
 import { ZonaModule } from './zona/zona.module';
 import { CaneriaModule } from './caneria/caneria.module';
 import { MedicionModule } from './medicion/medicion.module';
@@ -21,7 +22,8 @@ import { SeedModule } from './seed/seed.module';
       useFactory: (): TypeOrmModuleOptions => getConfigDB(),
     }),
     UserModule,
-    TanqueModule,
+    ReservorioModule,
+    DomiciliarioModule,
     DispositivoEsp32Module,
     SensorModule,
     MedicionModule,

@@ -1,14 +1,23 @@
-import { IsNumber, IsString, IsNotEmpty, IsOptional } from 'class-validator';
-import { IsUUID } from 'class-validator';
+import {
+  IsNumber,
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsUUID,
+} from 'class-validator';
 
 export class CreateMedicionDto {
   @IsUUID()
   @IsNotEmpty()
-  sensorId: string;
+  sensorId?: string;
 
   @IsNumber()
   @IsNotEmpty()
-  valor: number;
+  valor?: number;
+
+  @IsString()
+  @IsNotEmpty()
+  apiKey?: string;
 }
 
 export class UpdateMedicionDto {

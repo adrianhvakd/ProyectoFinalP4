@@ -4,7 +4,6 @@ import {
   Column,
   ManyToOne,
   OneToMany,
-  OneToOne,
   Index,
   CreateDateColumn,
   UpdateDateColumn,
@@ -14,20 +13,16 @@ import { Point } from 'geojson';
 import { UserEntity } from 'src/user/entities/user.entity';
 import { SensorEntity } from 'src/sensor/entities/sensor.entity';
 import { DispositivoESP32Entity } from 'src/dispositivo-esp32/entities/dispositivo-esp32.entity';
-import { CaneriaEntity } from 'src/caneria/entities/caneria.entity';
-import { ZonaEntity } from 'src/zona/entities/zona.entity';
+import { ReservorioEntity } from 'src/reservorio/entities/reservorio.entity';
 import { v4 } from 'uuid';
 
-@Entity('tanques')
-export class TanqueEntity {
+@Entity('tanques_domiciliario')
+export class DomiciliarioEntity {
   @PrimaryGeneratedColumn('uuid')
   id: string = v4();
 
   @Column()
   nombre?: string;
-
-  @Column({ type: 'enum', enum: ['RESERVORIO_PUBLICO', 'DOMICILIARIO'] })
-  tipo?: string;
 
   @Column('float')
   capacidad_max?: number;
@@ -43,20 +38,17 @@ export class TanqueEntity {
   })
   ubicacion: Point;
 
-  @ManyToOne(() => UserEntity, (user) => user.tanques)
+  @ManyToOne(() => ReservorioEntity, (reservorio) => reservorio.domiciliarios, { nullable: true, onDelete: 'SET NULL' })
+  reservorio?: ReservorioEntity;
+
+  @ManyToOne(() => UserEntity, (user) => user.domiciliarios)
   user?: UserEntity;
 
-  @OneToMany(() => SensorEntity, (sensor) => sensor.tanque)
+  @OneToMany(() => SensorEntity, (sensor) => sensor.domiciliario)
   sensores?: SensorEntity[];
 
-  @OneToMany(() => DispositivoESP32Entity, (esp) => esp.tanque)
+  @OneToMany(() => DispositivoESP32Entity, (esp) => esp.domiciliario)
   dispositivos?: DispositivoESP32Entity[];
-
-  @OneToMany(() => CaneriaEntity, (caneria) => caneria.tanqueOrigen)
-  canerias?: CaneriaEntity[];
-
-  @OneToOne(() => ZonaEntity, (zona) => zona.tanque)
-  zona?: ZonaEntity;
 
   @CreateDateColumn()
   createdAt?: Date;

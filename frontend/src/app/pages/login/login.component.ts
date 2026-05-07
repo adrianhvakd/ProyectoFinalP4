@@ -8,65 +8,7 @@ import { ApiService } from '../../services/api.service';
   selector: 'app-login',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div class="min-h-screen flex items-center justify-center bg-base-200">
-      <div class="card w-full max-w-md bg-base-100 shadow-xl">
-        <div class="card-body">
-          <h2 class="card-title justify-center text-2xl font-bold text-center mb-6">
-            Sistema de Tanques de Agua
-          </h2>
-          
-          <form (ngSubmit)="onSubmit()" class="flex flex-col gap-4">
-            <label class="form-control w-full">
-              <span class="label">Email</span>
-              <input 
-                type="email" 
-                [(ngModel)]="email" 
-                name="email"
-                class="input input-bordered w-full" 
-                placeholder="email@ejemplo.com"
-                required
-              />
-            </label>
-            
-            <label class="form-control w-full">
-              <span class="label">Contraseña</span>
-              <input 
-                type="password" 
-                [(ngModel)]="password" 
-                name="password"
-                class="input input-bordered w-full" 
-                placeholder="••••••••"
-                required
-              />
-            </label>
-            
-            @if (error()) {
-              <p class="text-error text-sm">{{ error() }}</p>
-            }
-            
-            <button 
-              type="submit" 
-              class="btn btn-primary"
-              [class.loading]="loading()"
-            >
-              @if (!loading()) {
-                Iniciar Sesión
-              }
-            </button>
-          </form>
-
-          <div class="divider">Ó</div>
-          
-          <div class="text-center text-sm">
-            <p class="text-base-content/60">Credenciales de prueba:</p>
-            <p class="text-xs text-base-content/50">Admin: admin@test.com / admin123</p>
-            <p class="text-xs text-base-content/50">Usuario: user1@test.com / user123</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  `,
+  templateUrl: './login.component.html',
 })
 export class LoginComponent {
   private apiService = inject(ApiService);

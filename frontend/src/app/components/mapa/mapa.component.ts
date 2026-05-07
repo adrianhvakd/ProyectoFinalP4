@@ -1,326 +1,66 @@
-import { Component, Input, signal, ElementRef, ViewChild, AfterViewInit, OnDestroy, OnChanges, SimpleChanges, Output, EventEmitter, inject } from '@angular/core';
+import {
+  Component,
+  Input,
+  signal,
+  ElementRef,
+  ViewChild,
+  AfterViewInit,
+  OnDestroy,
+  OnChanges,
+  SimpleChanges,
+  Output,
+  EventEmitter,
+  inject,
+  ChangeDetectorRef,
+} from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { GeoJSONFeature, Tanque, Sensor, DispositivoESP32, ApiService } from '../../services/api.service';
+import {
+  GeoJSONFeature,
+  Tanque,
+  Sensor,
+  DispositivoESP32,
+  ApiService,
+} from '../../services/api.service';
 import * as L from 'leaflet';
 
-type Paso = 'tanque' | 'esp32' | 'sensores' | 'resumen';
+type Paso = 'usuario' | 'tanque' | 'area' | 'datos' | 'esp32' | 'sensores' | 'resumen';
 
 @Component({
   selector: 'app-mapa',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  template: `
-    <div class="w-full h-[500px] rounded-lg overflow-hidden border border-base-300 relative">
-      <div #mapContainer id="map" class="w-full h-full"></div>
-      
-      @if (mostrarClickInstruction()) {
-        <div class="absolute top-2 left-2 z-[1000] bg-base-100 px-3 py-1 rounded shadow text-sm">
-          Click en el mapa para agregar un tanque
-        </div>
-      }
-    </div>
-
-    @if (mostrarModal()) {
-      <dialog class="modal modal-open">
-        <div class="modal-box max-w-2xl">
-          <h3 class="font-bold text-lg mb-4">
-            {{ editandoTanque() ? 'Editar Tanque' : 'Nuevo Tanque (Paso ' + pasoActual() + '/3)' }}
-          </h3>
-
-          <!-- Progress steps -->
-          <div class="flex justify-center mb-6">
-            <div class="flex items-center">
-              @if (stepNumber('tanque') <= stepIndex()) {
-                <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">1</div>
-              } @else {
-                <div class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center font-bold">1</div>
-              }
-              <span class="ml-2" [class.font-bold]="stepNumber('tanque') === stepIndex()">Tanque</span>
-            </div>
-            <div class="w-8 h-0.5 bg-base-300 mx-2"></div>
-            <div class="flex items-center">
-              @if (stepNumber('esp32') <= stepIndex()) {
-                <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">2</div>
-              } @else {
-                <div class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center font-bold">2</div>
-              }
-              <span class="ml-2" [class.font-bold]="stepNumber('esp32') === stepIndex()">ESP32</span>
-            </div>
-            <div class="w-8 h-0.5 bg-base-300 mx-2"></div>
-            <div class="flex items-center">
-              @if (stepNumber('sensores') <= stepIndex()) {
-                <div class="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold">3</div>
-              } @else {
-                <div class="w-8 h-8 rounded-full bg-base-300 flex items-center justify-center font-bold">3</div>
-              }
-              <span class="ml-2" [class.font-bold]="stepNumber('sensores') === stepIndex()">Sensores</span>
-            </div>
-          </div>
-
-          <!-- Paso 1: Datos del Tanque -->
-          @if (pasoActual() === 'tanque') {
-            <div class="grid grid-cols-2 gap-4">
-              <div class="form-control col-span-2">
-                <label class="label"><span class="label-text">Nombre del Tanque</span></label>
-                <input type="text" [(ngModel)]="tanqueForm().nombre" class="input input-bordered" placeholder="Tanque Centro" />
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Tipo</span></label>
-                <select [(ngModel)]="tanqueForm().tipo" class="select select-bordered">
-                  <option value="RESERVORIO_PUBLICO">Reservorio Público</option>
-                  <option value="DOMICILIARIO">Domiciliario</option>
-                </select>
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Capacidad (L)</span></label>
-                <input type="number" [(ngModel)]="tanqueForm().capacidad_max" class="input input-bordered" />
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Altura (m)</span></label>
-                <input type="number" [(ngModel)]="tanqueForm().altura_max" class="input input-bordered" />
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Latitud</span></label>
-                <input type="number" [(ngModel)]="tanqueForm().lat" class="input input-bordered" readonly />
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Longitud</span></label>
-                <input type="number" [(ngModel)]="tanqueForm().lng" class="input input-bordered" readonly />
-              </div>
-            </div>
-          }
-
-          <!-- Paso 2: ESP32 -->
-          @if (pasoActual() === 'esp32') {
-            <div class="alert alert-info mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-              <span>Se requiere crear al menos un dispositivo ESP32 para poder agregar sensores</span>
-            </div>
-            
-            <div class="mb-4">
-              <h4 class="font-semibold mb-2">Dispositivos ESP32</h4>
-              <button class="btn btn-sm btn-outline" (click)="agregarDispositivo()">+ Agregar ESP32</button>
-            </div>
-            
-            <div class="space-y-3">
-              @for (disp of dispositivosForm(); track $index) {
-                <div class="flex gap-2 items-end p-3 bg-base-200 rounded-lg">
-                  <div class="form-control flex-1">
-                    <label class="label text-xs"><span class="label-text">Nombre</span></label>
-                    <input type="text" [(ngModel)]="disp.nombre" class="input input-sm input-bordered" placeholder="ESP-01" />
-                  </div>
-                  <div class="form-control flex-1">
-                    <label class="label text-xs"><span class="label-text">IP</span></label>
-                    <input type="text" [(ngModel)]="disp.ip_address" class="input input-sm input-bordered" placeholder="192.168.1.100" />
-                  </div>
-                  <div class="form-control w-20">
-                    <label class="label text-xs"><span class="label-text">Puerto</span></label>
-                    <input type="number" [(ngModel)]="disp.puerto" class="input input-sm input-bordered" />
-                  </div>
-                  <button class="btn btn-sm btn-error mb-0.5" (click)="eliminarDispositivo($index)">X</button>
-                </div>
-              }
-              
-              @if (dispositivosForm().length === 0) {
-                <div class="text-center text-error py-4">
-                  Debe agregar al menos un ESP32
-                </div>
-              }
-            </div>
-          }
-
-          <!-- Paso 3: Sensores -->
-          @if (pasoActual() === 'sensores') {
-            <div class="alert alert-warning mb-4">
-              <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-              <span>Debe agregar al menos un sensor</span>
-            </div>
-            
-            <div class="mb-4">
-              <h4 class="font-semibold mb-2">Sensores</h4>
-              <button class="btn btn-sm btn-outline" (click)="agregarSensor()">+ Agregar Sensor</button>
-            </div>
-            
-            <div class="overflow-x-auto">
-              <table class="table table-xs">
-                <thead>
-                  <tr>
-                    <th>Tipo</th>
-                    <th>Unidad</th>
-                    <th>ESP32</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  @for (sensor of sensoresForm(); track $index) {
-                    <tr>
-                      <td>
-                        <select [(ngModel)]="sensor.tipo" class="select select-xs select-bordered">
-                          <option value="NIVEL">NIVEL</option>
-                          <option value="PH">PH</option>
-                          <option value="TURBIDEZ">TURBIDEZ</option>
-                          <option value="TEMPERATURA">TEMPERATURA</option>
-                          <option value="FLUJO">FLUJO</option>
-                        </select>
-                      </td>
-                      <td>
-                        <input type="text" [(ngModel)]="sensor.unidad_medida" class="input input-xs input-bordered w-20" placeholder="%" />
-                      </td>
-                      <td>
-                        <select [(ngModel)]="sensor.dispositivoId" class="select select-xs select-bordered">
-                          @for (disp of dispositivosForm(); track disp.id || $index) {
-                            <option [value]="disp.id || 'new-' + $index">{{ disp.nombre || 'ESP-' + $index }}</option>
-                          }
-                        </select>
-                      </td>
-                      <td>
-                        <button class="btn btn-xs btn-error" (click)="eliminarSensor($index)">X</button>
-                      </td>
-                    </tr>
-                  }
-                </tbody>
-              </table>
-            </div>
-            
-            @if (sensoresForm().length === 0) {
-              <div class="text-center text-error py-4">
-                Debe agregar al menos un sensor
-              </div>
-            }
-          }
-
-          <!-- Resumen (for editing) -->
-          @if (editandoTanque() && pasoActual() === 'resumen') {
-            <div class="space-y-4">
-              <div class="grid grid-cols-2 gap-2 text-sm">
-                <div><strong>Nombre:</strong> {{ tanqueForm().nombre }}</div>
-                <div><strong>Tipo:</strong> {{ tanqueForm().tipo }}</div>
-                <div><strong>Capacidad:</strong> {{ tanqueForm().capacidad_max }}L</div>
-                <div><strong>Altura:</strong> {{ tanqueForm().altura_max }}m</div>
-              </div>
-              
-              <div>
-                <div class="flex justify-between items-center mb-2">
-                  <h4 class="font-semibold">ESP32 ({{ dispositivosForm().length }})</h4>
-                  <button class="btn btn-xs btn-outline" (click)="agregarDispositivo()">+ Agregar</button>
-                </div>
-                <ul class="space-y-1 text-sm">
-                  @for (disp of dispositivosForm(); track disp.id || $index) {
-                    <li class="flex justify-between items-center bg-base-200 p-2 rounded">
-                      <span>{{ disp.nombre }} ({{ disp.ip_address }}:{{ disp.puerto }})</span>
-                      <button class="btn btn-xs btn-error" (click)="eliminarDispositivo($index)">X</button>
-                    </li>
-                  }
-                </ul>
-                @if (dispositivosForm().length === 0) {
-                  <div class="text-error text-sm">Sin ESP32 - Agrega uno para poder añadir sensores</div>
-                }
-              </div>
-              
-              <div>
-                <div class="flex justify-between items-center mb-2">
-                  <h4 class="font-semibold">Sensores ({{ sensoresForm().length }})</h4>
-                  <button class="btn btn-xs btn-outline" [disabled]="dispositivosForm().length === 0" (click)="agregarSensor()">+ Agregar</button>
-                </div>
-                <ul class="space-y-1 text-sm">
-                  @for (sensor of sensoresForm(); track sensor.id || $index) {
-                    <li class="flex justify-between items-center bg-base-200 p-2 rounded">
-                      <span>{{ sensor.tipo }} ({{ sensor.unidad_medida }})</span>
-                      <button class="btn btn-xs btn-error" (click)="eliminarSensor($index)">X</button>
-                    </li>
-                  }
-                </ul>
-                @if (sensoresForm().length === 0) {
-                  <div class="text-warning text-sm">Sin sensores</div>
-                }
-              </div>
-
-              <div class="flex gap-2 mt-4">
-                <button class="btn btn-primary flex-1" (click)="sigPaso()">Editar Tanque</button>
-                <button class="btn btn-error flex-1" (click)="eliminarTanque()">Eliminar</button>
-              </div>
-            </div>
-          }
-
-          @if (editandoTanque() && pasoActual() === 'tanque') {
-            <div class="grid grid-cols-2 gap-4">
-              <div class="form-control col-span-2">
-                <label class="label"><span class="label-text">Nombre del Tanque</span></label>
-                <input type="text" [(ngModel)]="tanqueForm().nombre" class="input input-bordered" />
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Tipo</span></label>
-                <select [(ngModel)]="tanqueForm().tipo" class="select select-bordered">
-                  <option value="RESERVORIO_PUBLICO">Reservorio Público</option>
-                  <option value="DOMICILIARIO">Domiciliario</option>
-                </select>
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Capacidad (L)</span></label>
-                <input type="number" [(ngModel)]="tanqueForm().capacidad_max" class="input input-bordered" />
-              </div>
-              <div class="form-control">
-                <label class="label"><span class="label-text">Altura (m)</span></label>
-                <input type="number" [(ngModel)]="tanqueForm().altura_max" class="input input-bordered" />
-              </div>
-            </div>
-          }
-
-          <div class="modal-action">
-            @if (editandoTanque()) {
-              @if (pasoActual() === 'resumen') {
-                <button class="btn" (click)="cerrarModal()">Cerrar</button>
-              } @else {
-                <button class="btn btn-outline" (click)="antPaso()">Volver</button>
-                <button class="btn btn-primary" (click)="guardarTanque()">Guardar Cambios</button>
-              }
-            } @else {
-              @if (pasoActual() === 'tanque') {
-                <button class="btn btn-primary" [disabled]="!tanqueForm().nombre" (click)="sigPaso()">Siguiente</button>
-              }
-              @if (pasoActual() === 'esp32') {
-                <button class="btn btn-outline" (click)="antPaso()">Anterior</button>
-                <button class="btn btn-primary" [disabled]="dispositivosForm().length === 0" (click)="sigPaso()">Siguiente</button>
-              }
-              @if (pasoActual() === 'sensores') {
-                <button class="btn btn-outline" (click)="antPaso()">Anterior</button>
-                <button class="btn btn-primary" [disabled]="sensoresForm().length === 0" (click)="guardarTanque()">Guardar</button>
-              }
-            }
-          </div>
-        </div>
-        <form method="dialog" class="modal-backdrop">
-          <button (click)="cerrarModal()">cerrar</button>
-        </form>
-      </dialog>
-    }
-  `,
-  styles: [`
-    :host { display: block; }
-  `],
+  templateUrl: './mapa.component.html',
 })
 export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
   @ViewChild('mapContainer') mapContainer!: ElementRef;
-  
+
   @Input() tanques: Tanque[] = [];
   @Input() mostrarCanerias = true;
   @Input() mostrarZonas = true;
   @Input() modoAdmin = false;
+  @Input() modoSoloLectura = false;
+  @Input() filtrarPorIds: string[] = [];
   @Output() tanqueGuardado = new EventEmitter<void>();
+  @Output() tanqueClickeado = new EventEmitter<Tanque>();
 
   private apiService = inject(ApiService);
+  private cdr = inject(ChangeDetectorRef);
   private map!: L.Map;
   private caneriaLayer!: L.LayerGroup;
   private zonaLayer!: L.LayerGroup;
   private tanqueLayer!: L.LayerGroup;
+  private previewCircleLayer!: L.LayerGroup;
 
   mostrarModal = signal(false);
   mostrarClickInstruction = signal(false);
   editandoTanque = signal(false);
-  
+  modoAjusteArea = signal(false);
+  radioMinimo = signal(100);
+  radioTemporal = signal(1000);
+
   pasoActual = signal<Paso>('tanque');
-  
+
   tanqueForm = signal<any>({
     id: '',
     nombre: '',
@@ -329,18 +69,260 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
     altura_max: 5,
     lat: 0,
     lng: 0,
+    radio_cobertura: 1000,
   });
-  
+
   sensoresForm = signal<any[]>([]);
   dispositivosForm = signal<any[]>([]);
+  dispositivosList: any[] = [];
+  cargandoDispositivos = signal(false);
+
+  modoUsuario = signal<'existente' | 'nuevo'>('existente');
+  usuariosDisponibles = signal<any[]>([]);
+  usuarioSeleccionadoId = '';
+  nuevoUsuario = { nombre: '', email: '', password: '' };
+  usuarioCreadoId = signal<string | null>(null);
 
   ngAfterViewInit() {
-    this.initMap();
-    this.loadData();
+    setTimeout(() => {
+      this.initMap();
+      this.loadData();
+      this.loadUsuarios();
+      this.cdr.detectChanges();
+    }, 50);
+  }
+
+  private loadUsuarios() {
+    this.apiService.getUsers().subscribe({
+      next: (users) => this.usuariosDisponibles.set(users),
+      error: () => this.usuariosDisponibles.set([]),
+    });
+  }
+
+  mostrarPasoUsuario(): boolean {
+    return this.tanqueForm().tipo === 'DOMICILIARIO' && !this.editandoTanque();
+  }
+
+  getPasoIndex(): number {
+    const current = this.pasoActual();
+    if (this.editandoTanque()) {
+      if (current === 'datos') return 1;
+      if (current === 'esp32') return 2;
+      if (current === 'sensores') return 3;
+      return 1;
+    }
+    if (current === 'usuario') return 1;
+    if (current === 'tanque') return 2;
+    if (current === 'area') return 3;
+    if (current === 'esp32') return 4;
+    if (current === 'sensores') return 5;
+    return 5;
+  }
+
+  getTotalSteps(): number {
+    if (this.editandoTanque()) return 3;
+    if (this.mostrarPasoUsuario() && this.mostrarPasoArea()) return 5;
+    if (this.mostrarPasoUsuario()) return 4;
+    if (this.mostrarPasoArea()) return 4;
+    return 3;
+  }
+
+  getStepsConfig(): any[] {
+    const steps: any[] = [];
+    let num = 1;
+    const current = this.pasoActual();
+    const idx = this.stepIndex();
+
+    if (this.editandoTanque()) {
+      steps.push({
+        key: 'datos',
+        num: num++,
+        label: 'Datos',
+        active: idx >= 1,
+        current: current === 'datos',
+      });
+      steps.push({
+        key: 'esp32',
+        num: num++,
+        label: 'ESP32',
+        active: idx >= 2,
+        current: current === 'esp32',
+      });
+      steps.push({
+        key: 'sensores',
+        num: num++,
+        label: 'Sensores',
+        active: idx >= 3,
+        current: current === 'sensores',
+      });
+      return steps;
+    }
+
+    if (this.mostrarPasoUsuario()) {
+      steps.push({
+        key: 'usuario',
+        num: num++,
+        label: 'Usuario',
+        active: this.stepNumber('usuario') <= idx,
+        current: current === 'usuario',
+      });
+    }
+
+    steps.push({
+      key: 'tanque',
+      num: num++,
+      label: 'Tanque',
+      active: this.stepNumber('tanque') <= idx,
+      current: current === 'tanque',
+    });
+
+    if (this.mostrarPasoArea()) {
+      steps.push({
+        key: 'area',
+        num: num++,
+        label: 'Área',
+        active: this.stepNumber('area') <= idx,
+        current: current === 'area',
+      });
+    }
+
+    steps.push({
+      key: 'esp32',
+      num: num++,
+      label: 'ESP32',
+      active: this.stepNumber('esp32') <= idx,
+      current: current === 'esp32',
+    });
+    steps.push({
+      key: 'sensores',
+      num: num++,
+      label: 'Sensores',
+      active: this.stepNumber('sensores') <= idx,
+      current: current === 'sensores',
+    });
+
+    return steps;
+  }
+
+  esValidoPasoUsuario(): boolean {
+    if (this.modoUsuario() === 'existente') {
+      return !!this.usuarioSeleccionadoId;
+    } else {
+      return !!(this.nuevoUsuario.nombre && this.nuevoUsuario.email && this.nuevoUsuario.password);
+    }
+  }
+
+  onTipoChange() {
+    if (this.tanqueForm().tipo === 'RESERVORIO_PUBLICO') {
+      this.actualizarCirculoPreview();
+    } else {
+      this.limpiarPreviewCirculo();
+    }
+  }
+
+  actualizarCirculoPreview() {
+    this.previewCircleLayer.clearLayers();
+    const form = this.tanqueForm();
+    const radio = this.modoAjusteArea() ? this.radioTemporal() : form.radio_cobertura || 1000;
+    if (form.tipo === 'RESERVORIO_PUBLICO' && form.lat && form.lng && radio) {
+      const circle = L.circle([form.lat, form.lng], {
+        radius: radio,
+        color: '#eab308',
+        fillColor: '#eab308',
+        fillOpacity: 0.2,
+        weight: 2,
+        dashArray: '5, 10',
+      });
+      circle.addTo(this.previewCircleLayer);
+    }
+  }
+
+  private limpiarPreviewCirculo() {
+    this.previewCircleLayer.clearLayers();
+  }
+
+  entrarModoAjusteArea() {
+    this.modoAjusteArea.set(true);
+    this.mostrarModal.set(false);
+    this.radioTemporal.set(this.tanqueForm().radio_cobertura || 1000);
+
+    if (this.tanqueForm().id) {
+      this.apiService.getRadioMinimo(this.tanqueForm().id).subscribe({
+        next: (min) => this.radioMinimo.set(min),
+        error: () => this.radioMinimo.set(100),
+      });
+    } else {
+      this.radioMinimo.set(100);
+    }
+
+    setTimeout(() => this.actualizarCirculoPreview(), 100);
+  }
+
+  onSliderRadioChange(value: number) {
+    const min = this.radioMinimo();
+    if (value < min) {
+      this.radioTemporal.set(min);
+    } else {
+      this.radioTemporal.set(value);
+    }
+    this.actualizarCirculoPreview();
+  }
+
+  confirmarArea() {
+    const nuevoRadio = this.radioTemporal();
+    this.tanqueForm.update((f) => ({ ...f, radio_cobertura: nuevoRadio }));
+    this.modoAjusteArea.set(false);
+    this.limpiarPreviewCirculo();
+
+    if (this.editandoTanque()) {
+      const form = this.tanqueForm();
+      this.apiService
+        .updateTanque(form.id, {
+          nombre: form.nombre,
+          capacidad_max: form.capacidad_max,
+          altura_max: form.altura_max,
+          lat: form.lat,
+          lng: form.lng,
+          radio_cobertura: nuevoRadio,
+        })
+        .subscribe({
+          next: () => {
+            this.loadZonas();
+            this.loadCanerias();
+            this.mostrarModal.set(true);
+            this.pasoActual.set('datos');
+          },
+        });
+    } else {
+      this.mostrarModal.set(true);
+      this.pasoActual.set('esp32');
+      this.loadZonas();
+      this.loadCanerias();
+    }
+  }
+
+  cancelarAjusteArea() {
+    this.modoAjusteArea.set(false);
+    this.limpiarPreviewCirculo();
+    this.mostrarModal.set(true);
   }
 
   ngOnChanges(changes: SimpleChanges) {
+    if (!this.map) {
+      setTimeout(() => {
+        if (!this.map) {
+          this.initMap();
+          this.loadData();
+          this.loadUsuarios();
+          this.cdr.detectChanges();
+        }
+      }, 100);
+      return;
+    }
+
     if (this.map) {
+      this.map.invalidateSize();
+      this.cdr.detectChanges();
       if (changes['tanques'] && !changes['tanques'].firstChange) {
         this.renderTanques();
       }
@@ -358,6 +340,9 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
           this.zonaLayer?.clearLayers();
         }
       }
+      if (changes['filtrarPorIds'] && this.mostrarZonas) {
+        this.loadZonas();
+      }
     }
   }
 
@@ -368,6 +353,10 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
   }
 
   private initMap() {
+    if (this.map) {
+      return;
+    }
+
     this.map = L.map(this.mapContainer.nativeElement, {
       center: [-19.57, -65.75],
       zoom: 13,
@@ -380,15 +369,121 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
     this.caneriaLayer = L.layerGroup().addTo(this.map);
     this.zonaLayer = L.layerGroup().addTo(this.map);
     this.tanqueLayer = L.layerGroup().addTo(this.map);
+    this.previewCircleLayer = L.layerGroup().addTo(this.map);
 
     if (this.modoAdmin) {
       this.mostrarClickInstruction.set(true);
       this.map.on('click', (e: any) => {
         if (!this.mostrarModal()) {
-          this.abrirModalNuevo(e.latlng.lat, e.latlng.lng);
+          const lat = e.latlng.lat;
+          const lng = e.latlng.lng;
+
+          const clickedOnTank = this.tanques.some((tanque) => {
+            if (!tanque.ubicacion?.coordinates) return false;
+            const [tLng, tLat] = tanque.ubicacion.coordinates;
+            const distance = this.map.distance([lat, lng], [tLat, tLng]);
+            return distance < 50;
+          });
+
+          if (clickedOnTank) {
+            return;
+          }
+
+          const dentroZona = this.estaDentroDeZona(lat, lng);
+
+          if (dentroZona) {
+            const popupContent = `
+              <div class="text-center p-2">
+                <p class="font-bold mb-2">Estás dentro de un área de reservorio</p>
+                <p class="text-sm mb-3">¿Qué tipo de tanque quieres crear?</p>
+                <div class="flex gap-2 justify-center">
+                  <button id="btn-reservorio" class="btn btn-sm btn-primary">Reservorio</button>
+                  <button id="btn-domiciliario" class="btn btn-sm btn-secondary">Domiciliario</button>
+                </div>
+              </div>
+            `;
+
+            this.map.openPopup(popupContent, e.latlng, { className: 'custom-popup' });
+
+            setTimeout(() => {
+              const btnReservorio = document.getElementById('btn-reservorio');
+              const btnDomiciliario = document.getElementById('btn-domiciliario');
+
+              if (btnReservorio) {
+                btnReservorio.onclick = () => {
+                  this.map.closePopup();
+                  this.abrirModalNuevo(lat, lng, 'RESERVORIO_PUBLICO');
+                };
+              }
+
+              if (btnDomiciliario) {
+                btnDomiciliario.onclick = () => {
+                  this.map.closePopup();
+                  this.abrirModalNuevo(lat, lng, 'DOMICILIARIO');
+                };
+              }
+            }, 100);
+          } else {
+            const popupContent = `
+              <div class="text-center p-2">
+                <p class="font-bold mb-2">Estás fuera de un área de reservorio</p>
+                <p class="text-sm mb-3">Solo puedes crear un reservorio público aquí</p>
+                <button id="btn-reservorio-outside" class="btn btn-sm btn-primary">Crear Reservorio</button>
+              </div>
+            `;
+
+            this.map.openPopup(popupContent, e.latlng, { className: 'custom-popup' });
+
+            setTimeout(() => {
+              const btnReservorio = document.getElementById('btn-reservorio-outside');
+              if (btnReservorio) {
+                btnReservorio.onclick = () => {
+                  this.map.closePopup();
+                  this.abrirModalNuevo(lat, lng, 'RESERVORIO_PUBLICO');
+                };
+              }
+            }, 100);
+          }
         }
       });
     }
+  }
+
+  private estaDentroDeZona(lat: number, lng: number): boolean {
+    const layer = this.zonaLayer;
+    let dentro = false;
+
+    layer.eachLayer((polygon: any) => {
+      if (polygon.getLatLngs) {
+        const latLngs = polygon.getLatLngs();
+        const ring = Array.isArray(latLngs[0]) ? latLngs[0] : latLngs;
+        if (this.pointInPolygon([lat, lng], ring)) {
+          dentro = true;
+        }
+      }
+    });
+
+    return dentro;
+  }
+
+  private pointInPolygon(point: [number, number], polygon: any): boolean {
+    if (!polygon || polygon.length < 3) return false;
+
+    const [x, y] = point;
+    let inside = false;
+
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i].lat,
+        yi = polygon[i].lng;
+      const xj = polygon[j].lat,
+        yj = polygon[j].lng;
+
+      if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) {
+        inside = !inside;
+      }
+    }
+
+    return inside;
   }
 
   private loadData() {
@@ -401,8 +496,29 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
     this.caneriaLayer.clearLayers();
     this.apiService.getCaneriasGeoJSON().subscribe({
       next: (data) => {
+        const idsFiltrados = this.filtrarPorIds;
         data.features.forEach((feature: any) => {
           if (feature.geometry.type === 'LineString') {
+            const props = feature.properties || {};
+            const reservorioOrigenId = props.reservorio_origen_id;
+            const reservorioDestinoId = props.reservorio_destino_id;
+            const domiciliarioId = props.domiciliario_destino_id;
+
+            let mostrar = idsFiltrados.length === 0;
+
+            if (!mostrar) {
+              mostrar =
+                idsFiltrados.includes(reservorioOrigenId) ||
+                idsFiltrados.includes(reservorioDestinoId);
+            }
+
+            if (!mostrar && idsFiltrados.length > 0 && domiciliarioId) {
+              const tanque = this.tanques.find((t) => t.id === domiciliarioId);
+              mostrar = !!tanque;
+            }
+
+            if (!mostrar) return;
+
             const latLngs = this.coordinatesToLatLng(feature.geometry.coordinates);
             const polyline = L.polyline(latLngs, {
               color: '#3b82f6',
@@ -421,20 +537,34 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
 
   private loadZonas() {
     this.zonaLayer.clearLayers();
+    if (!this.mostrarZonas) return;
+
     this.apiService.getZonasGeoJSON().subscribe({
       next: (data) => {
+        const idsFiltrados = this.filtrarPorIds;
+        console.log('loadZonas - filtrarPorIds:', idsFiltrados);
+
         data.features.forEach((feature: any) => {
           if (feature.geometry.type === 'Polygon') {
+            const props = feature.properties || {};
+            const reservorioId = props.reservorio_id;
+
+            let mostrar = idsFiltrados.length === 0;
+            if (!mostrar && reservorioId) {
+              mostrar = idsFiltrados.includes(reservorioId);
+            }
+
+            if (!mostrar) return;
+
             const latLngs = this.coordinatesToLatLngLngs(feature.geometry.coordinates);
             const polygon = L.polygon(latLngs, {
-              color: '#22c55e',
-              fillColor: '#22c55e',
-              fillOpacity: 0.15,
+              color: '#3b82f6',
+              fillColor: '#3b82f6',
+              fillOpacity: 0.1,
               weight: 2,
+              bubblingMouseEvents: false,
+              interactive: false,
             });
-            if (feature.properties?.nombre) {
-              polygon.bindPopup(`Zona: ${feature.properties.nombre}`);
-            }
             polygon.addTo(this.zonaLayer);
           }
         });
@@ -448,39 +578,60 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
     this.tanques.forEach((tanque) => {
       if (tanque.ubicacion?.coordinates) {
         const [lng, lat] = tanque.ubicacion.coordinates;
-        
+
         const tieneAlerta = this.checkAlerta(tanque);
-        const color = tieneAlerta ? '#ef4444' : '#22c55e';
-        
+
+        const esReservorio = tanque.tipo === 'RESERVORIO_PUBLICO';
+        const baseColor = tieneAlerta ? '#ef4444' : esReservorio ? '#3b82f6' : '#22c55e';
+
+        const radius = esReservorio ? 20 : 12;
+
         const marker = L.circleMarker([lat, lng], {
-          radius: 12,
-          fillColor: color,
+          radius,
+          fillColor: baseColor,
           fillOpacity: 0.8,
           color: '#fff',
-          weight: 2,
+          weight: 3,
+          interactive: true,
         });
 
         const info = this.getTanqueInfo(tanque);
-        marker.bindPopup(info);
+        marker.bindPopup(info, {
+          maxWidth: 200,
+          closeButton: true,
+        });
 
-        if (this.modoAdmin) {
-          marker.on('click', () => {
-            this.abrirModalEditar(tanque);
-          });
-        }
+        marker.on('click', (e: any) => {
+          e.originalEvent.stopPropagation();
+          this.tanqueClickeado.emit(tanque);
+        });
+
+        marker.on('popupopen', () => {
+          if (this.modoAdmin) {
+            const btn = document.getElementById('edit-tanque-' + tanque.id);
+            if (btn) {
+              btn.onclick = () => this.abrirModalEditar(tanque);
+            }
+          }
+        });
 
         marker.addTo(this.tanqueLayer);
       }
     });
+
+    if (this.map) {
+      this.map.removeLayer(this.tanqueLayer);
+      this.tanqueLayer.addTo(this.map);
+    }
   }
 
   private checkAlerta(tanque: Tanque): boolean {
     const sensores = tanque.sensores as any[];
     if (!sensores) return false;
-    
-    const nivel = sensores.find(s => s?.tipo === 'NIVEL');
+
+    const nivel = sensores.find((s) => s?.tipo === 'NIVEL');
     if (!nivel?.mediciones?.length) return false;
-    
+
     const valor = nivel.mediciones[0].valor;
     return valor < 20 || valor > 95;
   }
@@ -489,24 +640,31 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
     const sensores = tanque.sensores as any[];
     let nivel = '-';
     let ph = '-';
-    
+
     if (sensores) {
-      const n = sensores.find(s => s?.tipo === 'NIVEL');
+      const n = sensores.find((s) => s?.tipo === 'NIVEL');
       if (n?.mediciones?.length) nivel = `${n.mediciones[0].valor}%`;
-      
-      const p = sensores.find(s => s?.tipo === 'PH');
+
+      const p = sensores.find((s) => s?.tipo === 'PH');
       if (p?.mediciones?.length) ph = `${p.mediciones[0].valor}`;
     }
-    
+
     const tieneAlerta = this.checkAlerta(tanque);
     const badge = tieneAlerta ? '<br><span class="text-error font-bold">⚠️ ALERTA</span>' : '';
-    
+
+    const esReservorio = tanque.tipo === 'RESERVORIO_PUBLICO';
+    const typeLabel = esReservorio ? 'Reservorio Público' : 'Domiciliario';
+    const editBtn =
+      this.modoAdmin && !this.modoSoloLectura
+        ? `<br><button id="edit-tanque-${tanque.id}" class="btn btn-sm btn-primary mt-2" style="margin-top:8px">Editar</button>`
+        : '';
+
     return `
       <strong>${tanque.nombre}</strong><br>
-      Tipo: ${tanque.tipo}<br>
+      Tipo: ${typeLabel}<br>
       Capacidad: ${tanque.capacidad_max}L<br>
       Nivel: ${nivel}<br>
-      pH: ${ph}${badge}
+      pH: ${ph}${badge}${editBtn}
     `;
   }
 
@@ -515,93 +673,172 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
   }
 
   private coordinatesToLatLngLngs(coords: number[][][]): L.LatLngExpression[][] {
-    return coords.map((ring) =>
-      ring.map((coord) => [coord[1], coord[0]] as L.LatLngExpression),
-    );
+    return coords.map((ring) => ring.map((coord) => [coord[1], coord[0]] as L.LatLngExpression));
   }
 
-  private abrirModalNuevo(lat: number, lng: number) {
+  private abrirModalNuevo(lat: number, lng: number, tipo?: 'RESERVORIO_PUBLICO' | 'DOMICILIARIO') {
     this.editandoTanque.set(false);
-    this.pasoActual.set('tanque');
+    this.pasoActual.set(tipo === 'DOMICILIARIO' ? 'usuario' : 'tanque');
     this.tanqueForm.set({
       id: '',
       nombre: '',
-      tipo: 'RESERVORIO_PUBLICO',
+      tipo: tipo || 'RESERVORIO_PUBLICO',
       capacidad_max: 10000,
       altura_max: 5,
       lat,
       lng,
+      radio_cobertura: 1000,
     });
     this.dispositivosForm.set([]);
     this.sensoresForm.set([]);
+    this.dispositivosList = [];
+    this.usuarioSeleccionadoId = '';
+    this.nuevoUsuario = { nombre: '', email: '', password: '' };
+    this.usuarioCreadoId.set(null);
+    this.modoUsuario.set('existente');
     this.mostrarModal.set(true);
+
+    if (tipo === 'RESERVORIO_PUBLICO') {
+      setTimeout(() => this.actualizarCirculoPreview(), 100);
+    }
   }
 
   private abrirModalEditar(tanque: Tanque) {
     this.editandoTanque.set(true);
-    this.pasoActual.set('resumen');
+    this.pasoActual.set('datos');
     const [lng, lat] = tanque.ubicacion?.coordinates || [0, 0];
-    
+
     this.tanqueForm.set({
       id: tanque.id,
       nombre: tanque.nombre,
-      tipo: tanque.tipo,
+      tipo: tanque.tipo || (tanque.radio_cobertura ? 'RESERVORIO_PUBLICO' : 'DOMICILIARIO'),
       capacidad_max: tanque.capacidad_max,
       altura_max: tanque.altura_max,
       lat,
       lng,
+      radio_cobertura: tanque.radio_cobertura,
     });
 
-    const sensores = tanque.sensores || [];
-    this.sensoresForm.set(sensores.map((s: any) => ({
-      id: s.id,
-      tipo: s.tipo,
-      unidad_medida: s.unidad_medida,
-      dispositivoId: s.dispositivo?.id || '',
-    })));
+    this.cargandoDispositivos.set(true);
+    this.mostrarModal.set(true);
 
-    this.apiService.getDispositivosByTanque(tanque.id).subscribe({
+    const dispositivoCall =
+      tanque.tipo === 'RESERVORIO_PUBLICO'
+        ? this.apiService.getDispositivosByReservorio(tanque.id)
+        : this.apiService.getDispositivosByDomiciliario(tanque.id);
+
+    dispositivoCall.subscribe({
       next: (dispositivos) => {
-        this.dispositivosForm.set(dispositivos.map((d: any) => ({
+        const dispositivosMapeados = dispositivos.map((d: any) => ({
           id: d.id,
           nombre: d.nombre,
-          ip_address: d.ip_address,
-          puerto: d.puerto,
-        })));
-        this.mostrarModal.set(true);
+          api_key: d.api_key,
+        }));
+
+        this.dispositivosForm.set(dispositivosMapeados);
+        this.dispositivosList = dispositivosMapeados;
+
+        const sensores = tanque.sensores || [];
+        this.sensoresForm.set(
+          sensores.map((s: any) => {
+            const dispId = s.dispositivo?.id || s.dispositivoId || '';
+            return {
+              id: s.id,
+              tipo: s.tipo,
+              unidad_medida: s.unidad_medida,
+              dispositivoId: dispId,
+            };
+          }),
+        );
+
+        this.cargandoDispositivos.set(false);
+        this.cdr.detectChanges();
+        if (tanque.tipo === 'RESERVORIO_PUBLICO') {
+          setTimeout(() => this.actualizarCirculoPreview(), 100);
+        }
       },
       error: () => {
         this.dispositivosForm.set([]);
-        this.mostrarModal.set(true);
+        this.sensoresForm.set([]);
+        this.cargandoDispositivos.set(false);
+        this.cdr.detectChanges();
+        if (tanque.tipo === 'RESERVORIO_PUBLICO') {
+          setTimeout(() => this.actualizarCirculoPreview(), 100);
+        }
       },
     });
   }
 
   cerrarModal() {
     this.mostrarModal.set(false);
+    this.limpiarPreviewCirculo();
   }
 
   stepNumber(paso: Paso): number {
-    const steps: Record<Paso, number> = { 'tanque': 1, 'esp32': 2, 'sensores': 3, 'resumen': 4 };
+    const steps: Record<Paso, number> = {
+      usuario: 0,
+      tanque: 1,
+      area: 2,
+      datos: 1,
+      esp32: 2,
+      sensores: 3,
+      resumen: 5,
+    };
     return steps[paso];
   }
 
   stepIndex(): number {
     const current = this.pasoActual();
-    if (current === 'tanque') return 1;
-    if (current === 'esp32') return 2;
-    if (current === 'sensores') return 3;
-    return 4;
+    const mostrarUsuario = this.mostrarPasoUsuario();
+    const esReservorio = this.tanqueForm().tipo === 'RESERVORIO_PUBLICO';
+
+    if (this.editandoTanque()) {
+      if (current === 'datos') return 1;
+      if (current === 'esp32') return 2;
+      if (current === 'sensores') return 3;
+      return 1;
+    }
+
+    if (current === 'usuario') return mostrarUsuario ? 1 : -1;
+    if (current === 'tanque') return mostrarUsuario ? 2 : esReservorio ? 1 : 1;
+    if (current === 'area') return mostrarUsuario ? 3 : esReservorio ? 2 : -1;
+    if (current === 'esp32') return mostrarUsuario ? 4 : esReservorio ? 3 : 2;
+    if (current === 'sensores') return mostrarUsuario ? 5 : esReservorio ? 4 : 3;
+    return 5;
+  }
+
+  mostrarPasoArea(): boolean {
+    return this.tanqueForm().tipo === 'RESERVORIO_PUBLICO' && !this.editandoTanque();
+  }
+
+  onSensorDeviceChange(value: any, index: number) {
+    const currentSensores = this.sensoresForm();
+    currentSensores[index].dispositivoId = value;
+    this.sensoresForm.set([...currentSensores]);
   }
 
   sigPaso() {
     if (this.editandoTanque()) {
-      if (this.pasoActual() === 'resumen') {
-        this.pasoActual.set('tanque');
+      if (this.pasoActual() === 'datos') {
+        this.pasoActual.set('esp32');
+      } else if (this.pasoActual() === 'esp32') {
+        if (this.cargandoDispositivos()) {
+          return;
+        }
+        this.pasoActual.set('sensores');
       }
       return;
     }
-    if (this.pasoActual() === 'tanque') {
+    if (this.pasoActual() === 'usuario') {
+      this.procesarUsuario();
+      this.pasoActual.set('tanque');
+    } else if (this.pasoActual() === 'tanque') {
+      if (this.mostrarPasoArea()) {
+        this.pasoActual.set('area');
+      } else {
+        this.pasoActual.set('esp32');
+      }
+    } else if (this.pasoActual() === 'area') {
       this.pasoActual.set('esp32');
     } else if (this.pasoActual() === 'esp32') {
       this.pasoActual.set('sensores');
@@ -610,75 +847,126 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
 
   antPaso() {
     if (this.editandoTanque()) {
-      if (this.pasoActual() === 'tanque') {
-        this.pasoActual.set('resumen');
-      } else if (this.pasoActual() === 'esp32') {
-        this.pasoActual.set('tanque');
+      if (this.pasoActual() === 'esp32') {
+        this.pasoActual.set('datos');
       } else if (this.pasoActual() === 'sensores') {
         this.pasoActual.set('esp32');
       }
       return;
     }
-    if (this.pasoActual() === 'esp32') {
+    if (this.pasoActual() === 'tanque') {
+      if (this.mostrarPasoUsuario()) {
+        this.pasoActual.set('usuario');
+      }
+    } else if (this.pasoActual() === 'area') {
       this.pasoActual.set('tanque');
+    } else if (this.pasoActual() === 'esp32') {
+      if (this.mostrarPasoArea()) {
+        this.pasoActual.set('area');
+      } else {
+        this.pasoActual.set('tanque');
+      }
     } else if (this.pasoActual() === 'sensores') {
       this.pasoActual.set('esp32');
     }
   }
 
+  private procesarUsuario() {
+    if (this.modoUsuario() === 'existente') {
+      this.usuarioCreadoId.set(this.usuarioSeleccionadoId);
+    } else {
+      this.apiService
+        .createUser({
+          nombre: this.nuevoUsuario.nombre,
+          email: this.nuevoUsuario.email,
+          password: this.nuevoUsuario.password,
+          role: 'USER',
+        })
+        .subscribe({
+          next: (user) => {
+            this.usuarioCreadoId.set(user.id);
+            this.loadUsuarios();
+          },
+        });
+    }
+  }
+
   agregarDispositivo() {
-    this.dispositivosForm.update(d => [...d, { nombre: '', ip_address: '', puerto: 80 }]);
+    this.dispositivosForm.update((d) => [...d, { nombre: '' }]);
   }
 
   eliminarDispositivo(index: number) {
     const dispId = this.dispositivosForm()[index].id;
-    this.dispositivosForm.update(d => d.filter((_: any, i: number) => i !== index));
+    this.dispositivosForm.update((d) => d.filter((_: any, i: number) => i !== index));
     if (dispId) {
-      this.sensoresForm.update(sensors => 
+      this.sensoresForm.update((sensors) =>
         sensors.map((s: any) => {
           if (s.dispositivoId === dispId) {
             return { ...s, dispositivoId: '' };
           }
           return s;
-        })
+        }),
       );
     }
+  }
+
+  copiarApiKey(apiKey: string) {
+    navigator.clipboard
+      .writeText(apiKey)
+      .then(() => {
+        alert('API Key copiada al portapapeles');
+      })
+      .catch((err) => {
+        console.error('Error al copiar:', err);
+      });
   }
 
   agregarSensor() {
     const dispositivos = this.dispositivosForm();
     if (dispositivos.length === 0) return;
-    
+
     const disp = dispositivos[0];
     const existingCount = this.sensoresForm().length;
     const existingDispIds = dispositivos.map((d: any) => d.id || `new-${dispositivos.indexOf(d)}`);
-    
-    this.sensoresForm.update(s => [...s, { 
-      tipo: 'NIVEL', 
-      unidad_medida: '%', 
-      dispositivoId: disp?.id || `new-0` 
-    }]);
+
+    this.sensoresForm.update((s) => [
+      ...s,
+      {
+        tipo: 'NIVEL',
+        unidad_medida: '%',
+        dispositivoId: disp?.id || `new-0`,
+      },
+    ]);
   }
 
   eliminarSensor(index: number) {
-    this.sensoresForm.update(s => s.filter((_: any, i: number) => i !== index));
+    this.sensoresForm.update((s) => s.filter((_: any, i: number) => i !== index));
   }
 
   guardarTanque() {
     const form = this.tanqueForm();
-    const data = {
+    const data: any = {
       nombre: form.nombre,
       tipo: form.tipo,
       capacidad_max: form.capacidad_max,
       altura_max: form.altura_max,
       lat: form.lat,
       lng: form.lng,
+      radio_cobertura: form.radio_cobertura || 1000,
     };
+
+    if (form.tipo === 'DOMICILIARIO') {
+      if (this.usuarioCreadoId()) {
+        data.userId = this.usuarioCreadoId();
+      }
+    }
 
     if (this.editandoTanque()) {
       this.apiService.updateTanque(form.id, data).subscribe({
         next: () => {
           this.actualizarEntidades(form.id);
+          this.loadZonas();
+          this.loadCanerias();
           this.cerrarModal();
           this.tanqueGuardado.emit();
         },
@@ -686,81 +974,114 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
     } else {
       this.apiService.createTanque(data).subscribe({
         next: (nuevoTanque) => {
-          this.crearEntidades(nuevoTanque.id);
+          this.crearEntidades(nuevoTanque.id, form.tipo);
+          setTimeout(() => {
+            this.loadZonas();
+            this.loadCanerias();
+          }, 500);
         },
       });
     }
   }
 
   private actualizarEntidades(tanqueId: string) {
+    const tipo = this.tanqueForm().tipo;
+    const isReservorio = tipo === 'RESERVORIO_PUBLICO';
+    const entidadIdField = isReservorio ? 'reservorioId' : 'domiciliarioId';
+    const entidadId = tanqueId;
+
     const dispositivos = this.dispositivosForm();
     const sensores = this.sensoresForm();
-    
+
     dispositivos.forEach((d: any) => {
       if (d.id) {
-        this.apiService.updateDispositivo(d.id, { nombre: d.nombre, ip_address: d.ip_address, puerto: d.puerto }).subscribe();
+        this.apiService.updateDispositivo(d.id, { nombre: d.nombre }).subscribe();
       } else {
-        this.apiService.createDispositivo({
+        const payload: any = {
           nombre: d.nombre,
           ip_address: d.ip_address,
           puerto: d.puerto,
-          tanqueId,
-        }).subscribe();
+        };
+        payload[entidadIdField] = entidadId;
+        this.apiService.createDispositivo(payload).subscribe();
       }
     });
 
     sensores.forEach((s: any) => {
       if (s.id) {
-        this.apiService.updateSensor(s.id, { tipo: s.tipo, unidad_medida: s.unidad_medida }).subscribe();
+        this.apiService
+          .updateSensor(s.id, { tipo: s.tipo, unidad_medida: s.unidad_medida })
+          .subscribe();
       } else {
-        this.apiService.createSensor({
+        const payload: any = {
           tipo: s.tipo,
           unidad_medida: s.unidad_medida,
-          tanqueId,
-        }).subscribe();
+        };
+        payload[entidadIdField] = entidadId;
+        if (s.dispositivoId && !s.dispositivoId.startsWith('new-')) {
+          payload.dispositivoId = s.dispositivoId;
+        }
+        this.apiService.createSensor(payload).subscribe();
       }
     });
   }
 
-  private crearEntidades(tanqueId: string) {
+  private crearEntidades(tanqueId: string, tipo: string) {
+    const isReservorio = tipo === 'RESERVORIO_PUBLICO';
+    const entidadIdField = isReservorio ? 'reservorioId' : 'domiciliarioId';
+    const entidadId = tanqueId;
+
     const dispositivos = this.dispositivosForm();
     const sensores = this.sensoresForm();
-    
+
+    if (dispositivos.length === 0 && sensores.length === 0) {
+      this.cerrarModal();
+      this.tanqueGuardado.emit();
+      return;
+    }
+
     const dispositivosCreados: any[] = [];
-    
+
     dispositivos.forEach((d: any) => {
-      this.apiService.createDispositivo({
+      const payload: any = {
         nombre: d.nombre,
-        ip_address: d.ip_address,
-        puerto: d.puerto,
-        tanqueId,
-      }).subscribe({
+      };
+      payload[entidadIdField] = entidadId;
+
+      this.apiService.createDispositivo(payload).subscribe({
         next: (nuevoDisp) => {
           dispositivosCreados.push(nuevoDisp);
-          
-          const sensoresParaEsteDisp = sensores.filter((s: any) => 
-            s.dispositivoId === 'new-' + dispositivos.indexOf(d)
+
+          const sensoresParaEsteDisp = sensores.filter(
+            (s: any) => s.dispositivoId === 'new-' + dispositivos.indexOf(d),
           );
-          
+
           sensoresParaEsteDisp.forEach((s: any) => {
-            this.apiService.createSensor({
+            const sensorPayload: any = {
               tipo: s.tipo,
               unidad_medida: s.unidad_medida,
-              tanqueId,
               dispositivoId: nuevoDisp.id,
-            }).subscribe();
+            };
+            sensorPayload[entidadIdField] = entidadId;
+            this.apiService.createSensor(sensorPayload).subscribe();
           });
-          
+
           if (dispositivosCreados.length === dispositivos.length) {
-            const sensoresSinDisp = sensores.filter((s: any) => !s.dispositivoId.startsWith('new-'));
+            const sensoresSinDisp = sensores.filter(
+              (s: any) => !s.dispositivoId.startsWith('new-'),
+            );
             sensoresSinDisp.forEach((s: any) => {
-              this.apiService.createSensor({
+              const sensorPayload: any = {
                 tipo: s.tipo,
                 unidad_medida: s.unidad_medida,
-                tanqueId,
-              }).subscribe();
+              };
+              sensorPayload[entidadIdField] = entidadId;
+              if (s.dispositivoId && !s.dispositivoId.startsWith('new-')) {
+                sensorPayload.dispositivoId = s.dispositivoId;
+              }
+              this.apiService.createSensor(sensorPayload).subscribe();
             });
-            
+
             this.cerrarModal();
             this.tanqueGuardado.emit();
           }
@@ -771,11 +1092,26 @@ export class MapaComponent implements AfterViewInit, OnDestroy, OnChanges {
 
   eliminarTanque() {
     const form = this.tanqueForm();
+    let tipo: string;
+
+    if (form.tipo === 'RESERVORIO_PUBLICO' || form.tipo === 'DOMICILIARIO') {
+      tipo = form.tipo;
+    } else if (form.radio_cobertura && form.radio_cobertura > 0) {
+      tipo = 'RESERVORIO_PUBLICO';
+    } else {
+      tipo = 'DOMICILIARIO';
+    }
+
+    console.log('Eliminando tanque:', form.id, 'tipo:', tipo);
     if (form.id) {
-      this.apiService.deleteTanque(form.id).subscribe({
+      this.apiService.deleteTanque(form.id, tipo).subscribe({
         next: () => {
+          console.log('Tanque eliminado exitosamente');
           this.cerrarModal();
           this.tanqueGuardado.emit();
+        },
+        error: (err) => {
+          console.error('Error al eliminar tanque:', err);
         },
       });
     }

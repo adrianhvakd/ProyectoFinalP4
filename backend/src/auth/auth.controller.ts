@@ -33,6 +33,13 @@ export class AuthController {
     return result;
   }
 
+  @Get('validate')
+  @UseGuards(JwtAuthGuard)
+  async validate(@Req() req: Request) {
+    const user = (req as any).user;
+    return this.authService.validateUser(user.userId);
+  }
+
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Get('profile')
   @Roles('ADMIN', 'USER')
